@@ -1,0 +1,2740 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. AB502001.
+      ************************************************************************
+      * PROCESO DE CIERRE DEL REGISTRO DIARIO DE OPERACIONES                 *
+      * PASAJE DE MVTOS. DEL REGISTRO A CONTABILIDAD                         *
+      ************************************************************************
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       SPECIAL-NAMES.
+           DECIMAL-POINT IS COMMA.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01 CAMPO          PIC 9(1).
+       01 I              PIC 9(3).
+       01 PANTALLA       PIC 9(15).
+       01 PANTALLA1      PIC 9(9),9(5).
+       01 NUM-SINI-W     PIC X(11).
+       01 NRO-EXPED-W    PIC X(2).
+       01 WS-RESULTADO   PIC 9(5).
+       01 WS-RESULTADO1  PIC 9(1) VALUE 0.
+       01 CANTIDAD       PIC 9(6).
+       01 EXISTE-CTA     PIC X(1).
+       01 ws-agrupa      PIC X(1).
+       1 EXISTE-PASO    PIC X(1).
+       01 TIENE-BENEF    PIC X(1).
+       01 WS-EXISTE-DOCUM      PIC X(01).
+           88 EXISTE-DOCUM     VALUE 'S'.
+           88 NO-EXISTE-DOCUM  VALUE 'N'.
+       01 TABLA.
+          02 CAMPO1 OCCURS 200. 
+             03 ELE1     PIC X(1).
+             03 ELE2     PIC X(2).
+             03 ELE3     PIC 9(2).
+             03 ELE4     PIC 9(2).
+             03 ELE5     PIC X(2).
+             03 ELE6     PIC X(4).
+             03 ELE7     PIC X(1).
+       01 davi           pic x(4).
+       01 cheque         PIC X(1).
+       01 otras-variables.
+          02 SUM-TC                     PIC 9(6).
+          02 HAYCHANT                   PIC X(1) VALUE SPACES.
+          02 REGNUM                     PIC 9(15).
+          02 CONTADOR                   PIC 9(4) value 0.
+          02 IMP-IMPTOS-MON-EXT-CHANT   PIC 9(13)V99 value 0.
+          02 IMP-IMPTOS-MON-LOCAL-CHANT PIC 9(13)V99 value 0.
+          02 COD-TARJETA                PIC 9(6) value 0.
+          02 IMP-MON-EXT-CHANT          PIC 9(13)V99 value 0.
+          02 IMP-MON-PAIS-CHANT         PIC 9(13)V99 value 0.
+          02  IAS220-FMODI              PIC  X(11).       
+          02  IAS220-USUMODI            PIC  X(10).            
+          02  IAS220-FCREA              PIC  X(11).
+          02  IAS220-XCLAGEN            PIC  X(11).
+          02  IAS220-LCONVAL            PIC  X(1).
+          02  IAS220-FASIDEF            PIC  X(11).
+
+          EXEC SQL BEGIN DECLARE SECTION END-EXEC
+       01 DATOS-SQL.
+          02  IAS220-CEMPRES             PIC S9(2)   COMP-3.
+          02  IAS220-CEJERCI             PIC S9(4)   COMP-3.
+          02  IAS220-CSUBCEN             PIC S9(2)   COMP-3.
+          02  IAS220-CSUCURS             PIC S9(3)   COMP-3.
+          02  IAS220-CSUCCAB             PIC S9(3)   COMP-3.
+          02  IAS220-CDELEGA             PIC S9(4)   COMP-3.
+          02  IAS220-LASIENTO            PIC  X(1).
+          02  IAS220-DFECAPU             PIC  X(11).
+      *   02  IAS220-FASIDEF             PIC  X(11).
+          02  IAS220-LTIPOAS             PIC  X(1).
+          02  IAS220-CCLAASI             PIC  X(3).
+          02  IAS220-CASIORI             PIC  X(8).
+          02  IAS220-CASIREN             PIC S9(8)   COMP-3.
+          02  IAS220-CAPUORI             PIC S9(8)   COMP-3.
+          02  IAS220-CAPUREN             PIC S9(8)   COMP-3.
+          02  IAS220-CCUENTA             PIC  X(15).
+          02  IAS220-CCONTRA             PIC  X(15).
+          02  IAS220-CCONAGR             PIC  X(2).
+          02  IAS220-CCONCEP             PIC  X(3).
+          02  IAS220-XCONCEP             PIC  X(30).
+          02  IAS220-LCLAINF             PIC  X(1).
+          02  IAS220-XDOCUME             PIC  X(10).
+          02  IAS220-DVENCIM             PIC  X(11).
+          02  IAS220-DFECHVA             PIC  X(11).
+          02  IAS220-CCENPRO             PIC  X(9).
+          02  IAS220-CCTATES             PIC  X(9).
+          02  IAS220-CCTADOM             PIC  X(15).
+          02  IAS220-NDEBE               PIC  S9(13)V9(2)  COMP-3.
+          02  IAS220-NHABER              PIC  S9(13)V9(2)  COMP-3.
+          02  IAS220-CDIVISA             PIC S9(2)         COMP-3.
+          02  IAS220-CTIPCAM             PIC  S9(6)V9(6)   COMP-3.
+          02  IAS220-NDEBELOC            PIC  S9(13)V9(2)  COMP-3.
+          02  IAS220-NHABERLOC           PIC S9(13)V9(2)   COMP-3.
+          02  IAS220-NTIPCTE             PIC S9(7)V9(5)    COMP-3.
+          02  IAS220-CDIVCTE             PIC S9(2)         COMP-3.
+          02  IAS220-NDEBECTE            PIC  S9(13)V9(2)  COMP-3.
+          02  IAS220-NHABERCTE           PIC  S9(13)V9(2)  COMP-3.
+          02  IAS220-CCTAAUX             PIC  X(15).
+          02  IAS220-CBASIVA             PIC S9(13)V9(2)   COMP-3.
+          02  IAS220-CTIPIVA             PIC  X(2).
+          02  IAS220-NCUOTA              PIC S9(13)V9(2)   COMP-3.
+          02  IAS220-CCTAIVA             PIC  X(15).
+          02  IAS220-XCTAAUX             PIC  X(30).
+          02  IAS220-NIVA1               PIC S9(3)V9(2)    COMP-3.
+          02  IAS220-CSIGNO1             PIC  X(1).
+          02  IAS220-CSIGNO2             PIC  X(1).
+          02  IAS220-NIVA2               PIC S9(3)V9(2)   COMP-3.
+          02  IAS220-NIVA3               PIC S9(3)V9(2)   COMP-3.
+      *   02  IAS220-LCONALM             PIC  X(1).
+      *   02  IAS220-LCONINM             PIC  X(1).
+      *   02  IAS220-LCONAPT             PIC  X(1).
+      *   02  IAS220-LCONADI             PIC  X(1).
+      *   02  IAS220-LCONCON             PIC  X(1).
+      *   02  IAS220-LCONREC             PIC  X(1).
+      *   02  IAS220-LCONCAR             PIC  X(1).
+      *   02  IAS220-LCONAIN             PIC  X(1).
+      *   02  IAS220-LCCLC               PIC  X(1).
+      *   02  IAS220-LCONLIQ             PIC  X(1).
+      *   02  IAS220-LCONVAL             PIC  X(1).
+      *   02  IAS220-LCONCONS            PIC  X(1).
+          02  IAS220-LBNFPRO             PIC  X(1).
+          02  IAS220-CPRODU              PIC S9(5)   COMP-3.
+          02  IAS220-CACTIV              PIC S9(2)   COMP-3.
+          02  IAS220-CCOLABO             PIC  X(16).
+      *   02  IAS220-CESTADO             PIC  X(1).
+      *   02  IAS220-XCLAGEN             PIC  X(11).
+      *   02  IAS220-FCREA               PIC  X(11).
+          02  IAS220-USUCREA             PIC  X(10).
+      *   02  IAS220-USUMODI             PIC  X(10).            
+      *   02  IAS220-FMODI               PIC  X(11).       
+          02  IAS220-CDELEGAC            PIC  S9(4)   COMP-3.
+
+          02 COD-CIA                     PIC S9(2)      COMP-3.
+          02 WS-CIA                      PIC X(11).
+          02 FEC-ASIENTO                 PIC X(11).
+          02 COD-OFIC-CONTAB             PIC S9(4)      COMP-3.
+          02 COD-OFIC-CIAL               PIC S9(4)      COMP-3.
+          02 NUM-ASIENTO                 PIC S9(3)      COMP-3.
+          02 NUM-OPER-ASIENTO            PIC S9(4)      COMP-3.
+          02 TIPO-ACTU                   PIC X(2).
+          02 COD-CAUSA-ANU               PIC S9(2)      COMP-3.
+          02 COD-CPTO-LIQ-GES            PIC S9(2)      COMP-3.
+          02 COD-USER                    PIC X(8).
+          02 COD-OFIC-IMPUT              PIC S9(4)      COMP-3.
+          02 COD-CTA-CTABLE              PIC X(15).
+          02 TIPO-CTA-AUX1               PIC X(2).
+          02 CONCEPTO-1                  PIC X(3).
+          02 COD-CIA-AUX1                PIC S9(2)      COMP-3.
+          02 COD-OFIC-IMPUT-AUX1         PIC S9(4)      COMP-3.
+          02 NUM-IDENTIF-AUX1            PIC X(13) VALUE SPACES.
+          02 FECHA-VALOR                 PIC X(11).
+          02 FECHA-CH                    PIC X(11).
+          02 FECHA-VCTO                  PIC X(11).
+          02 COD-OFIC-CONTAB-CRUCE       PIC S9(4)      COMP-3.
+          02 NUM-ORD-PAGO                PIC S9(10)     COMP-3.
+          02 NUM-ORD-CRUCE               PIC X(13).
+          02 DESC-MOVIM                  PIC X(30).
+          02 DAVIVIENDA                  pic x(4).
+          02 NUM-POL1                    PIC S9(13)     COMP-3.
+          02 NUM-END                     PIC S9(5)      COMP-3.
+          02 NUM-CUOTA                   PIC S9(2)      COMP-3.
+          02 RECIBO                  PIC S9(11)     COMP-3.
+          02 CLAVE-GESTOR                PIC S9(8)      COMP-3.
+          02 COD-COBRO                   PIC X(2).
+          02 NUM-SINI                    PIC S9(11)     COMP-3.
+          02 NRO-EXPED                   PIC S9(2)      COMP-3.
+          02 COD-SECC                    PIC S9(3)      COMP-3.
+          02 COD-RAMO                    PIC S9(3)      COMP-3.
+          02 COD-PROD                    PIC S9(5)      COMP-3.
+          02 COD-EMP                     PIC S9(5)      COMP-3.
+          02 IMP-MON-PAIS                PIC S9(13)V9(2) COMP-3.
+      *   02 IMP-MON-PAIS-CHANT          PIC S9(13)V9(2) COMP-3.
+          02 MCA-DEBE-HABER              PIC X(1).
+          02 IMP-MON-EXT                 PIC S9(13)V9(2) COMP-3.
+      *   02 IMP-MON-EXT-CHANT           PIC S9(13)V9(2) COMP-3.
+          02 COD-MON                     PIC S9(2)      COMP-3.
+          02 MON-CH                      PIC S9(2)      COMP-3.
+          02 TC                          PIC S9(6)V9(6) COMP-3.
+          02 BASE-IMPONIBLE              PIC S9(13)V9(2)	COMP-3.
+          02 FECHA-CAPTURA               PIC X(11).
+          02 TIPO-OPER-SINI              PIC X(1).
+          02 FECHA-FACTURA               PIC X(11).
+          02 IMPUESTO-IVA                PIC S9(13)V9(2)  COMP-3.
+          02 NOMBRE-RAZON-SOCIAL         PIC X(30).
+          02 COD-BENEF                   PIC X(16).
+          02 COD-ACT-BENEF               PIC S9(2)      COMP-3.
+          02 NUM-LIQ-GES                 PIC S9(5)      COMP-3.
+          02 COD-PAGO                    PIC S9(2)      COMP-3.
+      *   02 COD-TARJETA                 PIC S9(6)      COMP-3.
+          02 NOMBRE-ENTIDAD-TALON        PIC X(30).
+          02 NUMERO-TALON                PIC X(15).
+          02 NUM-ENTIDAD                 PIC S9(8)      COMP-3.
+          02 NUMERO-CUENTA               PIC X(15).
+          02 MCA-PLAZA                   PIC X(1).
+          02 NOM-PLAZA                   PIC X(40).
+          02 MCA-CAJA-BCO                PIC X(1).
+          02 IMP-IMPTOS-MON-LOCAL        PIC S9(13)V9(2) COMP-3.
+      *   02 IMP-IMPTOS-MON-LOCAL-CHANT  PIC S9(13)V9(2) COMP-3.
+      *   02 IMP-IMPTOS-MON-EXT-CHANT    PIC S9(13)V9(2) COMP-3.
+          02 IMP-IMPTOS-MON-EXT          PIC S9(13)V9(2) COMP-3.
+          02 COD-MON-IMPTOS              PIC S9(2)      COMP-3.
+          02 COD-USER-REC                PIC X(8).
+          02 COD-CTA-SIMPLIF             PIC X(5).
+          02 COD-CTA-SIMPLIF-REC         PIC X(5).
+          02 MCA-TRASPASO                PIC X(1).
+          02 MCA-MON                     PIC X(1).
+          02 MCA-MON-IMPTOS              PIC X(1).
+          02 NUM-LIQ                     PIC S9(11)     COMP-3.
+          02 COD-CTA-IMPTOS              PIC X(15).
+          02 NRO-FACTURA                 PIC X(10).
+
+          02 IASCAB-CEMPRES              PIC S9(2)      COMP-3.
+          02 IASCAB-CDELEGAC             PIC S9(4)      COMP-3.
+          02 IASCAB-DFECAPU              PIC X(11).             
+          02 IASCAB-CCLAASI              PIC X(3).             
+          02 IASCAB-CASIORI              PIC X(8).   
+          02 IASCAB-NDEBELOC             PIC S9(13)V9(2) COMP-3.
+          02 IASCAB-NHABERLOC            PIC S9(13)V9(2) COMP-3.
+
+          02 TCOD-CIA               PIC S9(2)        COMP-3.
+          02 TMCA-FORMA-CONTAB      PIC X(1).
+          02 TTIPO-ACTU             PIC X(2).
+      *   02 TIMP-MON-PAIS          PIC S9(13)V9(2)  COMP-3.
+      *   02 TIMP-IMPTOS-MON-LOCAL  PIC S9(13)V9(2)  COMP-3.
+      *   02 TCOD-OFIC-CONTAB       PIC S9(4)        COMP-3.
+      *   02 TCOD-OFIC-IMPUT        PIC S9(4)        COMP-3.
+          02 ACTU                   PIC X(2).
+          02 X-ACTU                 PIC X(2).
+          02 ACTU-CH                PIC X(2).
+          02 EJERCICIO              PIC S9(4)        COMP-3.
+          02 COD-DIV-DREG           PIC S9(2)        COMP-3.
+          02 COD-OFI-COMER          PIC S9(3)        COMP-3.
+          02 DESC-ACTU              PIC X(30).
+      *   02 FECHA-HOY              PIC X(11). 
+      *   02 CTA-SIMPLIF-DEF-CAJA   PIC X(5).
+          02 TC1                    PIC S9(9)V9(6)   COMP-3.
+          02 IAS713-CCODIHO         PIC S9(2)        COMP-3.
+          02 IAS713-CCODISO         PIC S9(2)        COMP-3.
+          02 CODUSR                 PIC X(8).
+          02 IAS110-CCLAIVA         PIC X(2).
+          02 HOLIVA3-XSIGNO1        PIC X(1).
+          02 HOLIVA3-XSIGNO2        PIC X(1).
+          02 HOLIVA3-NPORC1         PIC S9(3)V9(2)      COMP-3.
+          02 HOLIVA3-NPORC2         PIC S9(3)V9(2)      COMP-3.
+          02 HOLIVA3-NPORC3         PIC S9(3)V9(2)      COMP-3.
+          02 NOM-CIA                PIC X(30).
+      *   02 CONTADOR               PIC S9(4)        COMP-3.
+          02 MON                    PIC S9(2)        COMP-3.
+          02 PAGO                   PIC S9(2)        COMP-3.
+          02 AUX1                   PIC X(2).
+          02 CODCTACTABLE           PIC X(4).
+          02 debehaber              PIC X(1).
+          02 TCOD-MON               PIC S9(2)        COMP-3.
+          02 TCOD-PAGO              PIC S9(2)        COMP-3.
+          02 TAUX1                  PIC X(2).
+          02 TCODCTACTABLE          PIC X(4).
+          02 TDEBEHABER             PIC X(1).
+      *   02 CAJERO                 PIC X(8). 
+      *   02 TCCUOTAS               PIC S9(9)V9(5)   COMP-3.
+      *   02 TCDIARIO               PIC S9(9)V9(5)   COMP-3.
+      *   02 TCSINI                 PIC S9(9)V9(5)   COMP-3.
+      *   02 PAIS                   PIC S9(13)V9(2)  COMP-3.
+      *   02 TOTAL-BRUTO-LIQ        PIC S9(13)V9(2)  COMP-3.
+          02 HOLEST-LSUBCEN         PIC X(1).
+          02 HOLEST-LSUCURS         PIC X(1).
+          02 HOLEST-LDELEGA         PIC X(1).
+          02 IAS700-LPAR2           PIC X(1).
+          02 IAS700-LPAR4           PIC X(1).
+          02 IAS700-LPAR8           PIC X(1).
+          02 IAS700-LPAR12          PIC X(1).
+          02 IAS700-LPAR14          PIC X(1).
+          02 IAS700-LPAR15          PIC X(1).
+          02 IAS700-LPAR16          PIC X(1).
+          02 IAS721-NASIENTO        PIC S9(1)    COMP-3.
+      *   02 MCA-COB-PAG            PIC X(1).
+          02 IAS110-LAJUINF         PIC X(1).
+          02 IAS708-CEMPRES         PIC S9(2)    COMP-3.
+          02 IAS712-CEMPRES         PIC S9(2)    COMP-3.
+          02 HOLEXP-CEXPLOT         PIC X(9).
+      *   02 HAYCHANT               PIC X(1) VALUE SPACES.
+          02 X-COD-CIA              PIC S9(02)    COMP-3.
+          02 X-COD-OFIC-CONTAB      PIC S9(04)    COMP-3.
+          02 X-COD-OFIC-CIAL        PIC S9(04)    COMP-3.
+          02 X-COD-CTA-CTABLE       PIC X(15).
+          02 X-COD-CTABLE           PIC X(4).
+          02 X-COD-CTA-IMPTOS       PIC X(15).
+          02 X-MCA-DEBE-HABER       PIC X(01).
+          02 X-NRO-FACTURA          PIC X(10).
+          02 X-FECHA-VCTO           PIC X(11).
+          02 X-DESC-MOVIM           PIC X(30).
+
+          02 X-FEC-ASIENTO                 PIC X(11).
+          02 X-NUM-ASIENTO                 PIC S9(3)      COMP-3.
+          02 X-COD-OFIC-IMPUT              PIC S9(04)     COMP-3.
+          02 X-COD-SECC                    PIC S9(3)      COMP-3.
+          02 X-COD-RAMO                    PIC S9(3)      COMP-3.
+          02 X-COD-PROD                    PIC S9(5)      COMP-3.
+          02 X-COD-BENEF                   PIC X(16).
+          02 X-COD-ACT-BENEF               PIC S9(2)      COMP-3.
+          02 X-COD-PAGO                    PIC S9(2)      COMP-3.
+          02 X-COD-TARJETA                 PIC S9(6)      COMP-3.
+          02 X-MCA-CAJA-BCO                PIC X(1).
+          02 X-COD-MON                     PIC S9(2)      COMP-3.
+          02 X-COD-MON-IMPTOS              PIC S9(2)      COMP-3.
+          02 X-MCA-MON                     PIC X(1).
+          02 X-MCA-MON-IMPTOS              PIC X(1).
+          02 X-BASE-IMPONIBLE              PIC S9(13)V9(2)   COMP-3.
+          02 X-IMPUESTO-IVA                PIC S9(13)V9(2)  COMP-3.
+          02 X-COD-CTA-SIMPLIF             PIC X(5).
+          02 X-NUM-OPER-ASIENTO            PIC S9(4)      COMP-3.
+          02 X-NUM-IDENTIF-AUX1            PIC X(13).
+          02 X-TIPO-CTA-AUX1               PIC X(02).
+          02 X-IMP-MON-PAIS             PIC S9(13)V9(2) COMP-3.
+          02 X-IMP-MON-EXT              PIC S9(13)V9(2) COMP-3.
+          02 X-IMP-IMPTOS-MON-LOCAL     PIC S9(13)V9(2) COMP-3.
+          02 X-IMP-IMPTOS-MON-EXT       PIC S9(13)V9(2) COMP-3.
+          02 X-TC                       PIC S9(6)V9(6) COMP-3.
+
+          02 BLANCO                     PIC X(1).
+          02 REDONDEO-HOL               PIC S9(2)      COMP-3.
+          02 MCA-CHEQ-ANT               PIC X(1).
+          02 X-MCA-CHEQ-ANT             PIC X(1).
+          02 X-COD-CPTO-LIQ-GES         PIC S9(2)      COMP-3.
+
+       01  CLAVE                      PIC X(5).
+       01  OBSERVACION                PIC X(60).
+          EXEC SQL END DECLARE SECTION END-EXEC.
+       PROCEDURE DIVISION.
+       PRINCIPIO.
+      *
+            EXEC SQL
+                CONNECT '/' 
+            END-EXEC.
+      *     EXEC SQL
+      *       alter session set sql_trace true
+      *     END-EXEC.
+      *
+            MOVE 0              TO CONTADOR.
+      *---------lectura de parametros----------------------------------* 
+
+            PERFORM LEO-PARAMETROS.
+
+
+
+            PERFORM VALIDA-CIA.
+
+       		PERFORM LEO-A5021700.
+
+       		IF RESULTADO NOT = 4  
+      		   PERFORM ACT-PARAMETROS
+               PERFORM TERMINAR
+               MOVE 2 TO RETURN-CODE
+               STOP RUN
+            END-IF.
+
+       	    PERFORM LEO-A5021700a.
+
+	  	    IF RESULTADO NOT = 4  
+	         PERFORM ACT-PARAMETROS
+	  	       PERFORM TERMINAR
+	  	       MOVE 2 TO RETURN-CODE
+	  	       STOP RUN
+	  	    END-IF.
+
+       	    PERFORM LEO-A5021700b.
+
+	  	    IF RESULTADO NOT = 4  
+	         PERFORM ACT-PARAMETROS
+	  	       PERFORM TERMINAR
+	  	       MOVE 2 TO RETURN-CODE
+	  	       STOP RUN
+	  	    END-IF.
+
+      *			   PERFORM REV-INFORMACION 
+      *			   IF RESULTADO NOT = 4
+      *	             PERFORM ACT-PARAMETROS
+      *				 PERFORM TERMINAR
+      *				 MOVE 2 TO RETURN-CODE
+      *				 STOP RUN
+      *	  	       END-IF.
+
+            PERFORM CONTROL-DE-PROCESO.
+            IF RESULTADO NOT = 4  
+               PERFORM ACT-PARAMETROS 
+               PERFORM TERMINAR
+               MOVE 2 TO RETURN-CODE
+               STOP RUN
+            END-IF.
+      *
+            PERFORM CONTROL-DE-PROCESO2.
+            IF RESULTADO NOT = 4  
+               PERFORM ACT-PARAMETROS 
+               PERFORM TERMINAR
+               MOVE 2 TO RETURN-CODE
+               STOP RUN
+            END-IF.
+      *
+            PERFORM SACA-NOM-CIA.
+            PERFORM SACA-IAS700.
+            PERFORM SACA-IAS721.
+            PERFORM BORRA-IASFIC.
+            PERFORM BORRA-IASCAB.
+            PERFORM SACA-CAJERO.
+            PERFORM LIMPIA-IAS220.
+            PERFORM LIMPIA-DIARIO.
+      *
+            PERFORM INICIALIZAR VARYING I FROM 1 BY 1 UNTIL I > 200.
+            MOVE 0 TO RESULTADO.
+            PERFORM CARGAR-ACTU VARYING I FROM 1 BY 1 UNTIL
+                                            WS-RESULTADO1 = 4
+                                           OR I > 200.
+      *
+            PERFORM SACA-DIV-CTE.
+
+            PERFORM PROCESO VARYING I FROM 1 BY 1 UNTIL I > 200         
+                                         OR ELE1(I) = SPACES.
+      *
+            PERFORM TERMINAR.
+            PERFORM PROCESO-CHEQUES.
+            PERFORM TERMINAR.
+            MOVE 0 TO RESULTADO.
+            PERFORM CALCULA-TOTALES UNTIL RESULTADO = 4.
+      *     PERFORM VE-DIFERENCIA.
+      *
+            EXEC SQL
+            BEGIN
+            UPDATE A5021700 
+               SET MCA_BATCH = 'V'
+            WHERE COD_CIA = :TCOD-CIA        
+            ;
+            END;
+            END-EXEC.
+      *
+            PERFORM ACT-PARAMETROS.
+            PERFORM TERMINAR.
+            STOP RUN.
+      *
+      *--------rutina que verifica que no haya cajeros abiertos--------*
+       CONTROL-DE-PROCESO.
+      *------------------*
+                     MOVE 0 TO RESULTADO.
+             EXEC SQL
+                SELECT 
+             ' HAY CAJEROS ABIERTOS - NO PUEDE REALIZAR CIERRE DIARIO' 
+                INTO 
+                     :OBSERVACION
+                FROM  A5020037 
+                WHERE 
+                      COD_CIA    = :TCOD-CIA
+                AND   MCA_ESTADO = 'A'
+            END-EXEC.
+      *
+      *------rutina que verifica que se haya confirmado el cierre------*
+       CONTROL-DE-PROCESO2.
+      *-------------------*
+                   MOVE 0 TO RESULTADO.
+            EXEC SQL
+              SELECT 
+           DECODE(NVL(MCA_BATCH,'S'),
+               'S',
+              ' EL CAJERO PRINCIPAL NO CONFIRMO EL PROCESO DE CIERRE DIARIO' ,
+               'X',
+              ' NO HAY MOVIMIENTO PARA CONTABILIZAR',
+               'V',
+              ' EL PROCESO DE CIERRE YA SE EJECUTO - DEBE VALIDAR ASIENTO')
+               INTO 
+                  :OBSERVACION
+               FROM A5021700 
+               WHERE 
+                             COD_CIA = :TCOD-CIA
+                 AND   NVL(MCA_BATCH,'S') IN ('S','V','X')
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       LIMPIA-IAS220.  
+      *-------------*
+            MOVE 0 TO IAS220-CEMPRES, IAS220-CEJERCI, IAS220-CSUCURS,
+                      IAS220-CSUCCAB, IAS220-CDELEGA, IAS220-CASIREN,
+                      IAS220-CAPUORI, IAS220-CAPUREN, IAS220-NDEBE  ,
+                      IAS220-NHABER , IAS220-CDIVISA, IAS220-CTIPCAM,
+                      IAS220-NDEBELOC, IAS220-NHABERLOC, IAS220-NTIPCTE,
+                      IAS220-CDIVCTE, IAS220-CDELEGAC , IAS220-CSUBCEN ,
+                      IAS220-NDEBECTE, IAS220-NHABERCTE, IAS220-CBASIVA,
+                      IAS220-NCUOTA , IAS220-NIVA1  , IAS220-NIVA2  ,
+                      IAS220-NIVA3  , IAS220-CPRODU , IAS220-CACTIV.
+            MOVE 'N' TO IAS220-LASIENTO, 
+                      IAS220-LTIPOAS, IAS220-CCLAASI, IAS220-LCONVAL,
+                      IAS220-CASIORI, IAS220-CCUENTA, IAS220-CCONTRA,
+                      IAS220-CCONAGR, IAS220-CCONCEP, IAS220-XCONCEP,
+                      IAS220-LCLAINF, IAS220-XDOCUME, 
+                      IAS220-CCTATES, IAS220-CCTADOM, IAS220-CCTAAUX,
+                      IAS220-CTIPIVA, IAS220-CCTAIVA, IAS220-XCTAAUX,
+                      IAS220-CSIGNO1, IAS220-CSIGNO2, IAS220-LBNFPRO, 
+                      IAS220-CCOLABO, IAS220-USUCREA, IAS220-USUMODI.
+            MOVE SPACES TO IAS220-DFECAPU, IAS220-FASIDEF, davivienda,
+                      IAS220-DVENCIM, IAS220-DFECHVA, IAS220-XCLAGEN,
+                      IAS220-FCREA, IAS220-FMODI, IAS220-CCENPRO.
+      *
+      *----------------------------------------------------------------*
+       LIMPIA-DIARIO.  
+      *-------------*
+            MOVE 0 TO  COD-CIA, COD-OFIC-CONTAB,
+                       COD-OFIC-CIAL, NUM-ASIENTO, NUM-OPER-ASIENTO,
+                       COD-CAUSA-ANU, COD-CPTO-LIQ-GES,
+                       COD-OFIC-IMPUT, 
+                       COD-CIA-AUX1, COD-OFIC-IMPUT-AUX1,
+                       NUM-IDENTIF-AUX1, 
+                       COD-OFIC-CONTAB-CRUCE, NUM-ORD-CRUCE,
+                       NUM-POL1, NUM-END, NUM-CUOTA, RECIBO,
+					   NUM-ORD-PAGO,
+                       CLAVE-GESTOR, NUM-SINI, NRO-EXPED,
+                       COD-SECC, COD-RAMO, COD-PROD, COD-EMP,
+                       IMP-MON-PAIS, IMP-MON-EXT,
+                       COD-MON, BASE-IMPONIBLE, 
+                       IMPUESTO-IVA, COD-ACT-BENEF, NUM-LIQ-GES,
+                       COD-PAGO, NUMERO-TALON, NUM-ENTIDAD, 
+                       IMP-IMPTOS-MON-LOCAL, IMP-IMPTOS-MON-EXT,
+                       COD-MON-IMPTOS, NUM-LIQ,
+                       IMP-IMPTOS-MON-EXT-CHANT,
+                       IMP-IMPTOS-MON-LOCAL-CHANT,
+                       IMP-MON-EXT-CHANT,
+                       IMP-MON-PAIS-CHANT. 
+            MOVE LOW-VALUES TO  TC.
+            MOVE 'N' TO  TIPO-ACTU, COD-USER, COD-CTA-CTABLE,
+                       TIPO-CTA-AUX1, DESC-MOVIM, COD-COBRO, 
+                       CONCEPTO-1,
+                       MCA-DEBE-HABER, TIPO-OPER-SINI,
+                       NOMBRE-RAZON-SOCIAL, COD-BENEF, 
+                       NOMBRE-ENTIDAD-TALON, 
+                       NUMERO-CUENTA, MCA-PLAZA, NOM-PLAZA,
+                       MCA-CAJA-BCO, COD-USER-REC,
+                       COD-CTA-SIMPLIF, COD-CTA-SIMPLIF-REC,
+                       MCA-TRASPASO, MCA-MON, MCA-MON-IMPTOS,
+                       COD-CTA-IMPTOS , HAYCHANT.
+            MOVE SPACES TO FEC-ASIENTO, FECHA-VALOR, FECHA-VCTO,
+                       FECHA-CAPTURA, FECHA-FACTURA.
+            MOVE 0 TO IMP-MON-PAIS , IMP-MON-EXT , IMP-IMPTOS-MON-LOCAL ,
+                      IMP-IMPTOS-MON-EXT, SUM-TC , CANTIDAD.
+            MOVE 'N' TO EXISTE-CTA.
+      *
+      *----------------------------------------------------------------*
+       INICIALIZAR.
+      *-----------*
+            MOVE 0 TO ELE1(I).
+            MOVE 0 TO ELE2(I).
+            MOVE 0 TO ELE3(I).
+            MOVE 0 TO ELE4(I).
+            MOVE 0 TO ELE5(I).
+            MOVE 0 TO ELE6(I).
+            MOVE 0 TO ELE7(I).
+      *
+      *----------------------------------------------------------------*
+       CARGAR-ACTU.
+      *-----------*
+            PERFORM LEER-TIPO-ACTUS.
+            PERFORM LEER-TIPO-ACTU.
+
+
+              IF WS-RESULTADO1 NOT =  4 AND 
+                 RESULTADO     NOT =  4
+                 MOVE TMCA-FORMA-CONTAB       TO  ELE1(I)
+                 MOVE TTIPO-ACTU              TO  ELE2(I)
+                 MOVE TCOD-MON                TO  ELE3(I)
+                 MOVE TCOD-PAGO               TO  ELE4(I)
+                 MOVE TAUX1                   TO  ELE5(I)
+                 MOVE TCODCTACTABLE           TO  ELE6(I)
+                 MOVE TDEBEHABER              TO  ELE7(I).
+      *
+      *----------------------------------------------------------------*
+       PROCESO.
+      *-------*
+           IF ELE1(I) = 'A' 
+               PERFORM RUTINA-AGRUPAMIENTO.
+           IF ELE1(I) = 'I'
+	      IF (ELE6(I) = '1115' 
+               OR (ELE6(I) = '1110' AND TCOD-CIA = 7)
+               OR (ELE6(I) = '1120' AND TCOD-CIA = 7))
+               AND ELE3(I) = 1
+	        IF  (ELE2(I) = 'CB' OR ELE2(I) = 'TT')
+         		   AND 
+		    	   (ELE4(I) = 1 OR ELE4(I) = 2 OR ELE4(I) = 5)
+		    	   PERFORM RUTINA-AGRUPAMIENTO
+                ELSE
+			       PERFORM RUTINA-INDIVIDUAL
+                END-IF
+           ELSE
+			   PERFORM RUTINA-INDIVIDUAL
+           END-IF
+           END-IF.
+      *----------------------------------------------------------------*
+       RUTINA-AGRUPAMIENTO.
+      *-------------------*
+            MOVE        ELE1(I)        TO       ws-agrupa.
+            MOVE        ELE2(I)        TO       ACTU.
+            MOVE        ELE3(I)        TO       MON. 
+            MOVE        ELE4(I)        TO       PAGO. 
+            MOVE        ELE5(I)        TO       AUX1. 
+            MOVE        ELE6(I)        TO       CODCTACTABLE. 
+            MOVE        ELE7(I)        TO       DEBEHABER. 
+            MOVE        0              TO       RESULTADO.
+            MOVE        0              TO       WS-RESULTADO.
+            MOVE        SPACES         TO       X-COD-CTABLE.
+      *
+
+            PERFORM LEER-DIARIO-AGR-INICIAL.
+            IF WS-RESULTADO NOT = 4
+               PERFORM LEER-DIARIO-AGR      UNTIL WS-RESULTADO = 4.
+      *
+      *----------------------------------------------------------------*
+       PROCESO-CHEQUES.
+      *---------------*
+            MOVE    0       TO    RESULTADO.
+            MOVE    0       TO    WS-RESULTADO.
+      *
+            PERFORM LEER-DIARIO-AGR-INICIAL-CH.
+            IF WS-RESULTADO NOT = 4
+               PERFORM LEER-DIARIO-AGR-CH  UNTIL WS-RESULTADO = 4.
+      *
+      *----------------------------------------------------------------*
+       RUTINA-INDIVIDUAL.
+      *-----------------*
+            MOVE        ELE1(I)        TO         ws-agrupa.
+            MOVE        ELE2(I)        TO         ACTU.
+            MOVE        ELE3(I)        TO         MON. 
+            MOVE        ELE4(I)        TO         PAGO. 
+            MOVE        ELE5(I)        TO         AUX1. 
+            MOVE        ELE6(I)        TO         CODCTACTABLE. 
+            MOVE        ELE7(I)        TO         DEBEHABER. 
+            MOVE        0              TO         RESULTADO.
+            MOVE        0              TO         WS-RESULTADO.
+            MOVE        SPACES         TO         X-COD-CTABLE.
+      *
+
+
+            IF ACTU = 'DC'  OR ACTU = 'CG'
+               MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+               PERFORM LEER-DIARIO-ESP-INICIAL
+                 IF WS-RESULTADO NOT = 4
+                    PERFORM LEER-DIARIO-ESP      UNTIL WS-RESULTADO = 4
+                 END-IF
+            ELSE
+              PERFORM LEER-DIARIO-IND UNTIL RESULTADO = 4
+			END-IF.
+      *
+      *----------------------------------------------------------------*
+       INSERTA-MVTOS-CH.    
+      *----------------*
+           PERFORM DEBE-O-HABER.
+           PERFORM ARMA-DESC-CH.
+           PERFORM INSERTA-IASFIC.
+      *
+           IF HAYCHANT = 'S'
+              MOVE 'H' TO MCA-DEBE-HABER
+               PERFORM SACA-CTA-CHEQUE-ANT-CH
+              MOVE IMP-MON-PAIS-CHANT         TO IMP-MON-PAIS         
+              MOVE IMP-MON-EXT-CHANT          TO IMP-MON-EXT          
+              MOVE IMP-IMPTOS-MON-LOCAL-CHANT TO IMP-IMPTOS-MON-LOCAL 
+              MOVE IMP-IMPTOS-MON-EXT-CHANT   TO IMP-IMPTOS-MON-EXT   
+              PERFORM HABER
+              PERFORM ARMA-DESC-ANT-CH
+              PERFORM INSERTA-IASFIC
+           END-IF.
+      *
+           PERFORM LIMPIA-IAS220.
+           MOVE SPACES TO HAYCHANT.
+           PERFORM LIMPIA-DIARIO.
+
+      *
+      *----------------------------------------------------------------*
+       ARMA-DESC-CH.
+      *------------*
+                   MOVE 0 TO RESULTADO.
+                   MOVE NUM-IDENTIF-AUX1 TO NRO-FACTURA.
+                   move davivienda to davi.
+           IF davi = 'DAVI' then
+                  MOVE 'COMPENSACION RECAUDO DAVI ARP' TO IAS220-XCONCEP
+                   move actu-ch to ias220-cconcep
+                   MOVE 'S' to CHEQUE
+           ELSE
+           EXEC SQL
+              SELECT DECODE (:COD-PAGO,'1' ,
+                substr('DEP.CHEQUES COMP:'||:NUM-IDENTIF-AUX1,1,30),'5',
+                substr('DEP.TAR.RECAP No ' || :NUM-IDENTIF-AUX1,1,30)),
+                   substr(:ACTU-CH,1,3)
+              INTO 
+                   :IAS220-XCONCEP,
+                   :IAS220-CCONCEP
+              FROM DUAL
+           END-EXEC.
+      *
+      *----------------------------------------------------------------*
+      *--   ARMA LA DESCRIPCION DE LOS CHEQUES Y CUPONES DE DIAS     --*
+      *--   ANTERIORES                                               --*
+      *----------------------------------------------------------------*
+       ARMA-DESC-ANT-CH.
+      *----------------------------------------------------------------*
+                   MOVE 0 TO RESULTADO.
+                   MOVE NUM-IDENTIF-AUX1 TO NRO-FACTURA.
+           EXEC SQL
+                SELECT DECODE(:COD-PAGO,'1',
+                    substr('DEP.CH.D.ANT.:'||:NUM-IDENTIF-AUX1,1,30),'5',
+                    substr('DEP.TA.D.ANT.:'||:NUM-IDENTIF-AUX1,1,30))   ,
+                    substr(:ACTU-CH,1,3)
+                INTO 
+                    :IAS220-XCONCEP,
+                    :IAS220-CCONCEP
+                FROM DUAL
+           END-EXEC.
+
+
+      *
+      *----------------------------------------------------------------*
+       INSERTA-MVTOS.    
+      *-------------*
+           PERFORM LEE-MARCA.
+      *
+
+           IF ACTU = 'CT'  OR 'CP' OR 'DP'
+              PERFORM MUEVE-COBROS
+              PERFORM INSERTA-IASFIC.
+      *
+           IF ACTU = 'CB'  AND MCA-TRASPASO NOT = 'S'
+              IF ( COD-PAGO          = 1 OR  COD-PAGO = 5 )
+                 AND MCA-CAJA-BCO    = 'C'
+                 AND MCA-DEBE-HABER  = 'D'
+                 AND MCA-CHEQ-ANT    = 'S'
+                     NEXT SENTENCE
+              ELSE
+
+      ************  AGREGADO POR CARDOSO PARA CONCILIACIONES BANCARIA
+      *    NOHORA SEP-18-95 : INCLUYE LOS DEBITOS
+           IF MCA-CAJA-BCO   = 'B' AND
+              (MCA-DEBE-HABER = 'H' OR MCA-DEBE-HABER = 'D') AND
+              COD-PAGO       =  1 
+              MOVE NUMERO-TALON TO NRO-FACTURA
+         END-IF
+
+           IF MCA-CAJA-BCO   = 'B' AND
+              MCA-DEBE-HABER = 'D' AND
+              COD-PAGO       =  2  
+              MOVE NUM-IDENTIF-AUX1 TO NRO-FACTURA 
+         END-IF
+
+      ************   FIN DEL AGREGADO POR CARDOSO
+
+                     PERFORM MUEVE-COMPENSACIONES
+                     PERFORM INSERTA-IASFIC.
+      *
+           IF ACTU = 'CA'  OR 'PA'
+              PERFORM MUEVE-ANTICIPADOS
+              PERFORM INSERTA-IASFIC
+           END-IF.
+      *
+           IF ACTU = 'CV'  or ACTU = 'RT'
+              PERFORM MUEVE-C-P-VARIOS   
+              PERFORM INSERTA-IASFIC
+           END-IF.
+      *
+           IF ACTU = 'PS'  OR 'AP' OR 'CS' OR 'AR' OR 'PT' OR 'AT'
+                           OR 'PF' OR 'AS' OR 'PN' OR 'AN' OR 'PE'
+			   OR 'AE' OR 'PL' OR 'AL' OR 'CR' OR 'PG' OR 'AG'
+              PERFORM MUEVE-SINIESTROS 
+              PERFORM INSERTA-IASFIC
+           END-IF.
+      *
+           IF ACTU = 'PV' 
+              MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+              PERFORM MUEVE-C-P-VARIOS   
+              PERFORM INSERTA-IASFIC
+           END-IF.
+      *
+           IF ACTU = 'AC' 
+              PERFORM MUEVE-A-COBROS   
+              PERFORM INSERTA-IASFIC
+           END-IF.
+      *
+      * 20001030 : Nohora agrega actu = ND Nomina Diaria
+
+           IF ACTU = 'PC' OR 'MP' OR 'MC' OR 'MA' OR 'IF' OR 'IA'
+                          OR 'EF' OR 'EA' OR 'DC' OR 'ND'
+              PERFORM MUEVE-COMISIONES 
+              PERFORM INSERTA-IASFIC
+           END-IF.
+      *
+           IF ACTU = 'CG' 
+             MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+              PERFORM MUEVE-CTA-GESTION
+              PERFORM INSERTA-IASFIC
+           END-IF.
+      *
+           IF ACTU           = 'TT' AND
+              MCA-CAJA-BCO   = 'B'  AND
+              MCA-DEBE-HABER = 'D'  AND
+              COD-PAGO       =  2 
+              MOVE NUM-IDENTIF-AUX1 TO NRO-FACTURA
+           END-IF.
+
+           IF ACTU                = 'TT'   AND
+              MCA-TRASPASO    NOT = 'S'    AND
+              COD-CTA-CTABLE  NOT = SPACES 
+             IF    ( COD-PAGO        = 1  OR COD-PAGO = 5 )  AND
+                     MCA-CAJA-BCO    = 'C'     AND
+                     MCA-DEBE-HABER  = 'D'     AND
+                     MCA-CHEQ-ANT    = 'S'
+                     NEXT SENTENCE
+             ELSE
+                         PERFORM MUEVE-T-TESORERIA
+                         PERFORM INSERTA-IASFIC.
+      *
+           PERFORM LIMPIA-IAS220.
+           PERFORM LIMPIA-DIARIO.
+      *
+      *----------------------------------------------------------------*
+       DATOS-FIJOS.
+      *-----------*
+           MOVE TCOD-CIA           TO IAS220-CEMPRES.
+           MOVE EJERCICIO          TO IAS220-CEJERCI.
+      *
+           PERFORM ESTRUC-EMPRESA.
+           PERFORM SACA-SUBCEN-IMPUT.
+           PERFORM SACA-ESTRUC-CONTA.
+           PERFORM SACA-ESTRUCTURAL.
+      *
+           MOVE 'P'                TO IAS220-LASIENTO.
+           MOVE 'X'                TO IAS220-LCONVAL. 
+           MOVE FEC-ASIENTO        TO IAS220-DFECAPU.
+           MOVE 'L'                TO IAS220-LTIPOAS.
+           MOVE 'TES'              TO IAS220-CCLAASI.
+           MOVE NUM-ASIENTO        TO IAS220-CASIORI.
+           MOVE NUM-OPER-ASIENTO   TO IAS220-CAPUORI.
+           MOVE SPACES             TO IAS220-CCTATES.
+           MOVE COD-CTA-CTABLE     TO IAS220-CCUENTA.
+      *
+           IF ACTU = 'CV' OR ACTU = 'PV'   or ACTU = 'RT' 
+              MOVE CONCEPTO-1 TO IAS220-CCONCEP
+           ELSE 
+              MOVE ACTU       TO IAS220-CCONCEP
+           END-IF.
+      *
+           PERFORM SACA-DESC-ACTU.
+           MOVE 'N'                TO IAS220-LCLAINF.
+           MOVE COD-USER           TO IAS220-USUCREA.
+      *
+      *****************************************************************
+      *    CT , CP , DP  (DEBE O HABER)                               *
+      *****************************************************************
+       MUEVE-COBROS.
+      *------------*
+           IF    COD-MON       = COD-MON-IMPTOS
+                 ADD IMP-IMPTOS-MON-LOCAL TO IMP-MON-PAIS
+                 ADD IMP-IMPTOS-MON-EXT   TO IMP-MON-EXT
+           ELSE 
+              IF IMP-MON-PAIS  = 0 AND IMP-MON-EXT   = 0
+                 MOVE COD-MON-IMPTOS       TO COD-MON, MON
+                 MOVE IMP-IMPTOS-MON-LOCAL TO IMP-MON-PAIS
+                 MOVE IMP-IMPTOS-MON-EXT   TO IMP-MON-EXT  
+                 MOVE COD-CTA-IMPTOS       TO COD-CTA-CTABLE.
+      *
+           PERFORM MUEVE-COBROS-1.
+      *
+      *----------------------------------------------------------------*
+       MUEVE-COBROS-1.
+      *--------------*
+           MOVE FECHA-VALOR            TO IAS220-DFECHVA.
+           PERFORM SACA-RAMO-CTABLE.
+           MOVE HOLEXP-CEXPLOT         TO IAS220-CCENPRO.
+           PERFORM DEBE-O-HABER.
+      *
+      *****************************************************************
+      *    COMPENSACIONES (DEPENDE DEL MCA_DEBE_HABER DEL DIARIO)     *
+      *****************************************************************
+       MUEVE-COMPENSACIONES.
+      *--------------------*
+           PERFORM SACA-RAMO-CTABLE.
+           MOVE HOLEXP-CEXPLOT         TO IAS220-CCENPRO.
+           PERFORM DEBE-O-HABER.
+      *
+           IF MCA-CAJA-BCO   = 'B'        AND
+              (COD-PAGO       = 1  OR 5)    AND
+              MCA-CHEQ-ANT   = 'S'
+                  PERFORM INSERTA-IASFIC
+                  MOVE 'H'                TO MCA-DEBE-HABER
+                  PERFORM SACA-CTA-CHEQUE-ANT
+                  PERFORM HABER
+           END-IF.
+      *
+       VALIDA-CB.
+      *--------------*
+           IF TIPO-ACTU = 'CB'  THEN 
+                MOVE FECHA-VALOR     TO IAS220-DFECHVA
+           END-IF.
+           IF CHEQUE = 'S'  THEN 
+                  MOVE FECHA-CH     TO IAS220-DFECHVA
+                  move spaces to cheque
+           END-IF.
+
+      *****************************************************************
+      *    PAGO DE SINIESTROS (DEBE)                                  *
+      *****************************************************************
+       MUEVE-SINIESTROS.
+      *----------------*
+           MOVE FECHA-VALOR               TO IAS220-DFECHVA.
+           PERFORM SACA-RAMO-CTABLE.
+           MOVE HOLEXP-CEXPLOT            TO IAS220-CCENPRO.
+           PERFORM DEBE-O-HABER.
+      *
+      *****************************************************************
+      *    COBROS/PAGOS VARIOS (HABER -> CV , DEBE -> PV)             *
+      *****************************************************************
+       MUEVE-C-P-VARIOS.  
+      *----------------*
+           PERFORM SACA-RAMO-CTABLE.
+           MOVE HOLEXP-CEXPLOT           TO IAS220-CCENPRO.
+           PERFORM DEBE-O-HABER.
+      *                       
+      *                   I V A
+      * 
+      *    MOVE BASE-IMPONIBLE     TO IAS220-CBASIVA.
+      *    PERFORM SACA-TIPO-IVA.
+      *    MOVE IAS110-CCLAIVA     TO IAS220-CTIPIVA.
+      *    MOVE IMPUESTO-IVA       TO IAS220-NCUOTA.
+      *    MOVE COD-CTA-IMPTOS     TO IAS220-CCTAIVA.
+      *    PERFORM SACA-PORC-IVA.
+      *    MOVE HOLIVA3-XSIGNO1    TO IAS220-CSIGNO1.
+      *    MOVE HOLIVA3-XSIGNO2    TO IAS220-CSIGNO2.
+      *    MOVE HOLIVA3-NPORC1     TO IAS220-NIVA1.
+      *    MOVE HOLIVA3-NPORC2     TO IAS220-NIVA2.
+      *    MOVE HOLIVA3-NPORC3     TO IAS220-NIVA3.
+      *
+      *****************************************************************
+      * ANTICIPO DE COMISIONES                                (PC)    *
+      * DEBITOS Y CREDITOS A CTA.CTE. PRODUCTORES             (MP)    *
+      * DEBITOS Y CREDITOS A CTA.CTE. COASEGURADORAS          (MC)    *
+      *****************************************************************
+       MUEVE-COMISIONES.
+      *----------------*
+           PERFORM DEBE-O-HABER.
+      *
+      *****************************************************************
+      *    RECT. CONTABLES (ES LA MCA_DEBE_HABER)                     *
+      *****************************************************************
+       MUEVE-CTA-GESTION.
+      *-----------------*
+           PERFORM SACA-RAMO-CTABLE.
+           MOVE HOLEXP-CEXPLOT           TO IAS220-CCENPRO.
+           PERFORM DEBE-O-HABER.
+      *
+      *****************************************************************
+      *    ANULADO DE COBROS (DEBE)                                   *
+      *****************************************************************
+       MUEVE-A-COBROS.
+      *--------------*
+           IF COD-MON = COD-MON-IMPTOS 
+              ADD IMP-IMPTOS-MON-LOCAL TO IMP-MON-PAIS
+              ADD IMP-IMPTOS-MON-EXT   TO IMP-MON-EXT
+           ELSE 
+              IF    IMP-MON-PAIS  = 0 AND IMP-MON-EXT   = 0
+                 MOVE COD-MON-IMPTOS       TO COD-MON
+                 MOVE IMP-IMPTOS-MON-LOCAL TO IMP-MON-PAIS
+                 MOVE IMP-IMPTOS-MON-EXT   TO IMP-MON-EXT  
+                 MOVE COD-CTA-IMPTOS       TO COD-CTA-CTABLE.
+      *
+           PERFORM MUEVE-A-COBROS-1.
+      *
+      *----------------------------------------------------------------*
+       MUEVE-A-COBROS-1.
+      *----------------*
+           MOVE FECHA-VALOR             TO IAS220-DFECHVA.
+           PERFORM SACA-RAMO-CTABLE.
+           MOVE HOLEXP-CEXPLOT          TO IAS220-CCENPRO.
+           PERFORM DEBE-O-HABER.
+      *
+      *****************************************************************
+      *    COBROS ANTICIPADOS (DEBE-HABER)                            *
+      *****************************************************************
+       MUEVE-ANTICIPADOS.
+      *-----------------*
+           PERFORM SACA-RAMO-CTABLE.
+           MOVE HOLEXP-CEXPLOT          TO IAS220-CCENPRO.
+           PERFORM DEBE-O-HABER.
+      *
+      *****************************************************************
+      *    TRASPASOS DE TESORERIA (DEPENDE DE LA MCA_DEBE_HABER)      *
+      *****************************************************************
+       MUEVE-T-TESORERIA.
+      *-----------------*
+           PERFORM DEBE-O-HABER.
+      *
+           IF MCA-CHEQ-ANT   = 'S'
+              PERFORM INSERTA-IASFIC
+              MOVE 'H'                TO MCA-DEBE-HABER
+              PERFORM SACA-CTA-CHEQUE-ANT
+              PERFORM HABER
+           END-IF.
+      *
+      *----------------------------------------------------------------*
+       CALCULA-TOTALES.
+      *---------------*
+           PERFORM SACA-CABECERAS.
+           IF RESULTADO NOT = 4 
+              PERFORM INSERTA-TOTALES
+              MOVE 1 TO RESULTADO
+           END-IF.
+      *
+      *----------------------------------------------------------------*
+       VER-PARAMETROS.
+      *--------------*
+           IF IAS700-LPAR2 = 'N'
+              MOVE 'N'            TO IAS220-LCLAINF
+           ELSE
+              PERFORM SACA-IAS110
+              MOVE IAS110-LAJUINF TO IAS220-LCLAINF
+                IF IAS220-LCLAINF = 'S'
+                   MOVE FEC-ASIENTO TO IAS220-DFECHVA.
+      *
+           IF IAS700-LPAR4 = 'N'
+              MOVE SPACES TO IAS220-LBNFPRO
+              MOVE 0   TO IAS220-CPRODU, IAS220-CACTIV, IAS220-CCOLABO
+           ELSE
+             PERFORM BUSCO-IAS110.
+      *
+           IF TIENE-BENEF  = 'N'
+               MOVE SPACES TO IAS220-LBNFPRO
+               MOVE 0   TO IAS220-CPRODU, IAS220-CACTIV, IAS220-CCOLABO
+            ELSE     
+              IF COD-ACT-BENEF = 2 OR 12
+                  MOVE 'P'           TO IAS220-LBNFPRO
+                  MOVE COD-PROD      TO IAS220-CPRODU
+                  MOVE COD-ACT-BENEF TO IAS220-CACTIV
+                  MOVE COD-BENEF     TO IAS220-CCOLABO
+              ELSE
+                  IF COD-ACT-BENEF = 0     
+                    MOVE SPACES       TO IAS220-LBNFPRO
+                  ELSE
+                    MOVE 'B'            TO IAS220-LBNFPRO
+                    MOVE COD-ACT-BENEF  TO IAS220-CACTIV
+                    MOVE COD-BENEF      TO IAS220-CCOLABO.
+      *
+           IF IAS700-LPAR8 = 'N'
+      *        MOVE SPACES TO IAS220-XDOCUME, IAS220-DVENCIM
+               MOVE SPACES TO IAS220-DVENCIM
+           ELSE
+              PERFORM DOCUM-VCTO.
+      *
+           IF IAS700-LPAR12 = 'N'
+              MOVE SPACES TO IAS220-CCENPRO                
+           ELSE
+              PERFORM VERI-CENTROS
+           END-IF.
+      *
+           IF IAS700-LPAR14 = 'N'
+              MOVE SPACES TO IAS220-CCTADOM                
+           END-IF.
+      *
+           IF IAS700-LPAR15 = 'N'
+              MOVE 'N'    TO IAS220-CCONAGR                
+           END-IF.
+      *
+           IF IAS700-LPAR16 = 'N'
+              MOVE 'N'    TO IAS220-CCLAASI                
+           END-IF.
+      *
+           IF IAS220-CTIPIVA = SPACES
+              MOVE 0      TO IAS220-NCUOTA
+           END-IF.
+      *
+      *----------------------------------------------------------------*
+       MUEVE-DOCUM.
+      *-----------*
+              MOVE NRO-FACTURA   TO IAS220-XDOCUME.
+              MOVE SPACES        TO IAS220-DVENCIM.
+
+           IF ACTU = 'PV' OR ACTU = 'DP'  OR ACTU = 'CG'
+             MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+           END-IF.
+
+      *    IF ACTU = 'CA'
+      *       MOVE NUM-ORD-CRUCE TO IAS220-XDOCUME
+      *       MOVE SPACES        TO IAS220-DVENCIM
+      *    END-IF.
+      *
+      *    IF ACTU = 'PC'
+      *       MOVE COD-PROD      TO IAS220-XDOCUME
+      *       MOVE SPACES        TO IAS220-DVENCIM
+      *    END-IF.
+      *
+      *    IF ACTU = 'PV'
+      *       MOVE NRO-FACTURA   TO IAS220-XDOCUME
+      *       MOVE SPACES        TO IAS220-DVENCIM
+      *    END-IF.
+      *
+      *----------------------------------------------------------------*
+       MUEVE-DOCUM-VCTO.
+      *----------------*
+              MOVE NRO-FACTURA   TO IAS220-XDOCUME.
+              MOVE FECHA-VCTO    TO IAS220-DVENCIM.
+
+
+      *    IF ACTU = 'CA'
+      *       MOVE NUM-ORD-CRUCE TO IAS220-XDOCUME
+      *       MOVE FECHA-VCTO    TO IAS220-DVENCIM
+      *    END-IF.
+      *
+      *    IF ACTU = 'PC'
+      *       MOVE COD-PROD      TO IAS220-XDOCUME
+      *       MOVE FECHA-VCTO    TO IAS220-DVENCIM
+      *    END-IF.
+      *
+           IF ACTU = 'PV' OR ACTU = 'CG' OR ACTU = 'DP'
+              MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+      *       MOVE NRO-FACTURA   TO IAS220-XDOCUME
+      *       MOVE FECHA-VCTO    TO IAS220-DVENCIM
+           END-IF.
+      *
+      *----------------------------------------------------------------* 
+       BORRA-IASFIC.
+      *------------*
+            EXEC SQL
+               BEGIN
+               DELETE FROM IASFIC_tes
+               WHERE IAS220_CCLAASI = 'TES'
+                 AND IAS220_CEMPRES = :TCOD-CIA
+                 AND IAS220_CEJERCI = :EJERCICIO
+               ;
+               END;
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       BORRA-IASCAB.
+      *------------*
+            EXEC SQL
+               BEGIN
+               DELETE FROM IASCAB
+               WHERE IASCAB_CCLAASI = 'TES'
+                 AND IASCAB_CEMPRES = :TCOD-CIA
+               ;
+               END;
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-NOM-CIA.
+      *------------*
+                    MOVE 0 TO RESULTADO.
+            EXEC SQL
+               SELECT 
+                    NOM_CIA
+               INTO 
+                   :NOM-CIA
+               FROM A1000900
+               WHERE COD_CIA = :TCOD-CIA
+            END-EXEC.
+      *
+
+      *----------------------------------------------------------------*
+       LEER-TIPO-ACTUS.
+      *---------------*
+              MOVE WS-RESULTADO1 TO RESULTADO.
+          EXEC SQL
+          SELECT DISTINCT TIPO_ACTU,SUBSTR(COD_CTA_CTABLE,1,4),
+		         MCA_DEBE_HABER,
+				 NVL(COD_PAGO,0),COD_MON,
+				 NVL(TIPO_CTA_AUX1,'X')
+                   INTO  :TTIPO-ACTU ,:TCODCTACTABLE,
+				   :TDEBEHABER,
+				   :TCOD-PAGO,:TCOD-MON,
+				   :TAUX1
+               FROM A5021600
+               WHERE COD_CIA = :TCOD-CIA
+               ORDER BY TIPO_ACTU,
+			   SUBSTR(COD_CTA_CTABLE,1,4),
+			   MCA_DEBE_HABER,
+			   NVL(COD_PAGO,0),
+			   COD_MON,
+			   NVL(TIPO_CTA_AUX1,'X')
+            END-EXEC.
+              MOVE RESULTADO TO WS-RESULTADO1.
+
+      *----------------------------------------------------------------*
+       LEER-TIPO-ACTU.
+      *--------------*
+              MOVE 0 TO RESULTADO.
+            EXEC SQL
+                 SELECT MCA_FORMA_CONTAB
+                 INTO :TMCA-FORMA-CONTAB 
+                 FROM A5020600
+                 WHERE 
+                     COD_CIA   = :TCOD-CIA    AND
+                     TIPO_ACTU = :TTIPO-ACTU  AND
+                     COD_MON   = :TCOD-MON
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       LEE-MARCA.
+      *---------*
+               IF ACTU NOT = 'CB' AND 'TT'
+                  IF MCA-DEBE-HABER = 'H'
+                     MOVE 'D' TO MCA-DEBE-HABER
+                  ELSE
+                     MOVE 'H' TO MCA-DEBE-HABER.
+      *
+      *************************************************************
+      *EN LAS OPERACIONES DEL PARTE CONTABLE QUE SE CONTABILIZAN DE 
+      *       ------------------------------
+      *   FORMA AGRUPADA SE SELECCIONA Y SE AGRUPA LO SIGUIENTE :
+      *         --------
+      *SELECT -->  COD_CIA , FEC_ASIENTO , COD_OFIC_CONTAB , COD_OFIC_CIAL ,
+      *            NUM_ASIENTO , COD_OFIC_IMPUT , COD_CTA_CTABLE , COD_PROD ,
+      *            COD_SECC , COD_RAMO , SUM(IMP_MON_PAIS) , MCA_DEBE_HABER ,
+      *            SUM(IMP_MON_EXT), COD_MON , SUM(BASE_IMPONIBLE) ,
+      *            SUM(IMPUESTO_IVA), COD_BENEF , COD_ACT_BENEF ,
+      *            COD_PAGO , MCA_CAJA_BCO , SUM(IMP_IMPTOS_MON_LOCAL ,
+      *            SUM(IMP_IMPTOS_MON_EXT) , COD_MON_IMPTOS ,
+      *            COD_CTA_SIMPLIF , MCA_MON , MCA_MON_IMPTOS ,
+      *            COD_CTA_IMPTOS , :CONTADOR , AVG(NVL(TC,1))
+      *           
+      *     EL CAMPO :CONTADOR ES PARA EL NUMERO DE OPERACION (APUNTE)
+      *           
+      *GROUP BY -> COD_CTA_CTABLE , COD_ACT_BENEF , COD_CIA , FEC_ASIENTO , 
+      *            COD_OFIC_CONTAB , COD_OFIC_CIAL , NUM_ASIENTO ,
+      *            COD_OFIC_IMPUT , COD_PROD, COD_RAMO, MCA_DEBE_HABER, 
+      *            COD_MON , COD_BENEF , COD_PAGO , MCA_CAJA_BCO , 
+      *            COD_MON_IMPTOS , COD_CTA_SIMPLIF , MCA_MON , 
+      *            MCA_MON_IMPTOS , COD_CTA_IMPTOS , COD_SECC
+      *           
+      *************************************************************
+       SELECCION-ESPECIAL.
+      *------------------*
+      *  en esta lectura se saco la condicion que num_identif_aux1 sea
+      *  null.
+                   MOVE WS-RESULTADO TO RESULTADO. 
+             EXEC SQL
+                SELECT NVL(COD_CIA,0),TO_CHAR(FEC_ASIENTO,'DD-MON-YYYY'),
+                       NVL(COD_OFIC_CONTAB,0),
+                       NVL(COD_OFIC_CIAL,0),NVL(NUM_ASIENTO,0), 
+                       NVL(COD_OFIC_IMPUT,0),NVL(COD_CTA_CTABLE,'N'),
+                       NVL(COD_PROD,0),NVL(COD_RAMO,0),COD_SECC,
+                       NVL(IMP_MON_PAIS,0),NVL(MCA_DEBE_HABER,'N'),
+                       NVL(IMP_MON_EXT,0),
+                       NVL(COD_MON,0),NVL(BASE_IMPONIBLE,0),
+                       NVL(IMPUESTO_IVA,0),
+                       substr(NVL(TO_CHAR(COD_BENEF),'766666667'),1,16), 
+                       NVL(COD_ACT_BENEF,1),
+                       NVL(COD_PAGO,0),
+                       NVL(MCA_CAJA_BCO,'N'),NVL(IMP_IMPTOS_MON_LOCAL,0),
+                       NVL(IMP_IMPTOS_MON_EXT,0),NVL(COD_MON_IMPTOS,0),
+                       NVL(COD_CTA_SIMPLIF,'N'),NVL(MCA_MON,'N'),
+                       NVL(MCA_MON_IMPTOS,'N'),
+                       NVL(COD_CTA_IMPTOS,'N'),NUM_OPER_ASIENTO,
+                       NVL(TC,1),
+                       NVL(MCA_CHEQ_ANT,'N'),
+                       COD_CPTO_LIQ_GES , NRO_FACTURA , 
+                       TO_CHAR(FECHA_VCTO,'DD-MON-YYYY'),
+                       DECODE(MCA_CAJA_BCO,'',DESC_MOVIM,'N'),
+                       substr(desc_movim,22,4),
+                       TO_CHAR(FECHA_VALOR,'DD-MON-YYYY'),
+					   lpad(substr(num_ord_pago,9,6),6,0),
+					   lpad(numero_talon,10,0)
+                   INTO
+                       :X-COD-CIA, :X-FEC-ASIENTO, :X-COD-OFIC-CONTAB,
+                       :X-COD-OFIC-CIAL, :X-NUM-ASIENTO, :X-COD-OFIC-IMPUT, 
+                       :X-COD-CTA-CTABLE, 
+                         :X-COD-PROD, :X-COD-RAMO, :X-COD-SECC,
+                       :X-IMP-MON-PAIS, :X-MCA-DEBE-HABER, :X-IMP-MON-EXT,
+                       :X-COD-MON, :X-BASE-IMPONIBLE, :X-IMPUESTO-IVA,
+                       :X-COD-BENEF, :X-COD-ACT-BENEF, :X-COD-PAGO, 
+                       :X-MCA-CAJA-BCO, :X-IMP-IMPTOS-MON-LOCAL,
+                       :X-IMP-IMPTOS-MON-EXT, :X-COD-MON-IMPTOS,
+                       :X-COD-CTA-SIMPLIF, :X-MCA-MON, :X-MCA-MON-IMPTOS,
+                       :X-COD-CTA-IMPTOS, :X-NUM-OPER-ASIENTO, :X-TC,
+                       :X-MCA-CHEQ-ANT,
+                       :X-COD-CPTO-LIQ-GES,
+                       :X-NRO-FACTURA,
+                       :X-FECHA-VCTO,
+                       :X-DESC-MOVIM ,
+                       :davivienda,
+                       :fecha-ch,
+					   :NUM-ORD-PAGO,
+					   :NUMERO-TALON
+                  FROM A5021600
+                  WHERE TIPO_ACTU = :ACTU
+                    AND COD_MON   = :MON
+                    AND COD_CIA   = :TCOD-CIA
+				AND SUBSTR(COD_CTA_CTABLE,1,4)  = :CODCTACTABLE
+			AND MCA_DEBE_HABER   = :DEBEHABER
+				AND NVL(COD_PAGO, 0) = NVL(:PAGO,0)
+				AND NVL(TIPO_CTA_AUX1,'X') = NVL(:AUX1,'X')
+             ORDER BY COD_OFIC_CONTAB,
+                      COD_OFIC_CIAL,
+                      DECODE(TIPO_ACTU,'CG','',
+                      NVL(TO_CHAR(COD_BENEF),'766666667')),
+                      DECODE(TIPO_ACTU,'CG','',NVL(COD_ACT_BENEF,1)),
+                      COD_CTA_CTABLE,
+                      MCA_DEBE_HABER,   
+                      COD_SECC
+             END-EXEC.
+             MOVE RESULTADO TO WS-RESULTADO. 
+      *
+      *----------------------------------------------------------------*
+       LEER-DIARIO-ESP-INICIAL.
+      *-----------------------*
+             PERFORM LIMPIA-DIARIO.
+             PERFORM SELECCION-ESPECIAL.
+             IF WS-RESULTADO NOT = 4
+                PERFORM BUSCO-IAS712
+                PERFORM AGRUPO      THRU F-AGRUPO
+                PERFORM GUARDO      THRU F-GUARDO
+             END-IF.
+      *
+      *----------------------------------------------------------------*
+       LEER-DIARIO-ESP.
+      *---------------*
+             PERFORM SELECCION-ESPECIAL.
+      *
+             IF WS-RESULTADO NOT = 4 AND
+                ACTU = 'CG'         
+                MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+                PERFORM EXISTE-DOCUMENTO
+             END-IF.
+      *
+             IF WS-RESULTADO NOT = 4
+               ADD 1 TO CONTADOR 
+               IF ACTU             = 'CG'
+                 IF COD-CIA          NOT = X-COD-CIA          OR
+                    COD-OFIC-CONTAB  NOT = X-COD-OFIC-CONTAB  OR
+                    COD-OFIC-CIAL    NOT = X-COD-OFIC-CIAL    OR
+                    MCA-DEBE-HABER   NOT = X-MCA-DEBE-HABER   OR
+                    COD-CTA-CTABLE   NOT = X-COD-CTA-CTABLE   OR
+                    EXISTE-DOCUM                              OR
+                    ( COD-SECC       NOT = X-COD-SECC     AND
+                      EXISTE-CTA     =     'S'              ) OR
+                    X-MCA-CAJA-BCO   = 'N'
+                   MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+                   PERFORM CORTE     THRU F-CORTE
+                   PERFORM GUARDO    THRU F-GUARDO
+                 ELSE
+                   MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+                   PERFORM AGRUPO    THRU F-AGRUPO
+               ELSE 
+                 IF COD-CIA          NOT = X-COD-CIA          OR
+                    COD-OFIC-CONTAB  NOT = X-COD-OFIC-CONTAB  OR
+                    COD-OFIC-CIAL    NOT = X-COD-OFIC-CIAL    OR
+                    COD-BENEF        NOT = X-COD-BENEF        OR
+                    COD-ACT-BENEF    NOT = X-COD-ACT-BENEF    OR
+                    MCA-DEBE-HABER   NOT = X-MCA-DEBE-HABER   OR
+                    COD-CTA-CTABLE   NOT = X-COD-CTA-CTABLE   OR
+                    ( COD-SECC       NOT = X-COD-SECC     AND
+                      EXISTE-CTA     =     'S'              )
+                   PERFORM CORTE     THRU F-CORTE
+                   PERFORM GUARDO    THRU F-GUARDO
+                 ELSE
+                   PERFORM AGRUPO    THRU F-AGRUPO
+               ELSE
+                 PERFORM CORTE.
+      *
+      *----------------------------------------------------------------*
+       SELECCION.
+      *---------*
+
+
+                    MOVE WS-RESULTADO TO RESULTADO.
+             EXEC SQL
+                SELECT NVL(COD_CIA,0),TO_CHAR(FEC_ASIENTO,'DD-MON-YYYY'),
+                       NVL(COD_OFIC_CONTAB,0),
+                       NVL(COD_OFIC_CIAL,0),NVL(NUM_ASIENTO,0), 
+                       NVL(COD_OFIC_IMPUT,0),NVL(COD_CTA_CTABLE,'N'),
+					   SUBSTR(COD_CTA_CTABLE,1,4),
+                       NVL(COD_PROD,0),NVL(COD_RAMO,0),COD_SECC,
+                       NVL(IMP_MON_PAIS,0),NVL(MCA_DEBE_HABER,'N'),
+                       NVL(IMP_MON_EXT,0),
+                       NVL(COD_MON,0),NVL(BASE_IMPONIBLE,0),
+                       NVL(IMPUESTO_IVA,0),
+                       substr(NVL(TO_CHAR(COD_BENEF),'766666667'),1,16), 
+                       NVL(COD_ACT_BENEF,1),
+                       NVL(COD_PAGO,0),
+                       NVL(MCA_CAJA_BCO,'N'),NVL(IMP_IMPTOS_MON_LOCAL,0),
+                       NVL(IMP_IMPTOS_MON_EXT,0),NVL(COD_MON_IMPTOS,0),
+                       NVL(COD_CTA_SIMPLIF,'N'),NVL(MCA_MON,'N'),
+                       NVL(MCA_MON_IMPTOS,'N'),
+                       NVL(COD_CTA_IMPTOS,'N'),NUM_OPER_ASIENTO,
+                       NVL(TC,1),
+                       lpad(NUM_IDENTIF_AUX1,13,'0'),
+                       NVL(MCA_CHEQ_ANT,'N'),
+                       COD_CPTO_LIQ_GES,
+                       substr(desc_movim,22,4),
+                       TO_CHAR(FECHA_VALOR,'DD-MON-YYYY'),
+					   lpad(numero_talon,10,0),
+					   lpad(substr(num_ord_pago,9,6),6,0)
+                   INTO
+                       :X-COD-CIA, :X-FEC-ASIENTO, :X-COD-OFIC-CONTAB,
+                       :X-COD-OFIC-CIAL, :X-NUM-ASIENTO, :X-COD-OFIC-IMPUT, 
+					   :X-COD-CTA-CTABLE,:X-COD-CTABLE,
+					   :X-COD-PROD, :X-COD-RAMO, :X-COD-SECC,
+                       :X-IMP-MON-PAIS, :X-MCA-DEBE-HABER, :X-IMP-MON-EXT,
+                       :X-COD-MON, :X-BASE-IMPONIBLE, :X-IMPUESTO-IVA,
+                       :X-COD-BENEF, :X-COD-ACT-BENEF, :X-COD-PAGO, 
+                       :X-MCA-CAJA-BCO, :X-IMP-IMPTOS-MON-LOCAL,
+                       :X-IMP-IMPTOS-MON-EXT, :X-COD-MON-IMPTOS,
+                       :X-COD-CTA-SIMPLIF, :X-MCA-MON, :X-MCA-MON-IMPTOS,
+                       :X-COD-CTA-IMPTOS, :X-NUM-OPER-ASIENTO, :X-TC,
+					   :X-NUM-IDENTIF-AUX1,
+                       :X-MCA-CHEQ-ANT,
+                       :X-COD-CPTO-LIQ-GES,:davivienda,
+                       :fecha-ch,:NUMERO-TALON,:NUM-ORD-PAGO
+        FROM A5021600
+        WHERE
+	TIPO_ACTU     = :ACTU
+        AND COD_MON   = :MON
+        AND COD_CIA   = :TCOD-CIA
+        AND SUBSTR(COD_CTA_CTABLE,1,4)   = :CODCTACTABLE
+        AND MCA_DEBE_HABER   = :DEBEHABER
+	AND NVL(COD_PAGO,0) = NVL(:PAGO,0)
+	AND NVL(TIPO_CTA_AUX1,'X') = NVL(:AUX1,'X')
+	AND ((NUM_IDENTIF_AUX1 IS NULL)
+      	OR    
+        (TIPO_ACTU IN('TT','CB')
+          AND MCA_CAJA_BCO = 'B'
+          AND MCA_DEBE_HABER = 'D'
+          AND COD_PAGO = 2
+          AND NUM_IDENTIF_AUX1 IS NOT NULL) OR
+            (NUM_IDENTIF_AUX1 IS NOT NULL AND
+             COD_PAGO    in( 5,8,1)              AND
+             TIPO_ACTU   = 'CB'           AND
+             MCA_DEBE_HABER = 'H' )) 
+        ORDER BY COD_OFIC_CONTAB,
+                 COD_OFIC_CIAL,
+                 COD_CTA_CTABLE,
+                 COD_CTA_IMPTOS,
+                 MCA_DEBE_HABER,
+                 COD_SECC
+        END-EXEC.
+            MOVE RESULTADO TO WS-RESULTADO.
+      *
+      *------------------------------------------------------------------*
+       SELECCION-CH.
+      *------------*
+                   MOVE WS-RESULTADO TO RESULTADO.
+             EXEC SQL
+                SELECT NVL(COD_CIA,0),TO_CHAR(FEC_ASIENTO,'DD-MON-YYYY'),
+                       NVL(COD_OFIC_CONTAB,0),
+                       NVL(COD_OFIC_CIAL,0),NVL(NUM_ASIENTO,0), 
+                       NVL(COD_OFIC_IMPUT,0),NVL(COD_CTA_CTABLE,'N'),
+					   SUBSTR(COD_CTA_CTABLE,1,4),
+                       NVL(COD_PROD,0),NVL(COD_RAMO,0),COD_SECC,
+                       NVL(IMP_MON_PAIS,0),NVL(MCA_DEBE_HABER,'N'),
+                       NVL(IMP_MON_EXT,0),
+                       NVL(COD_MON,0),NVL(BASE_IMPONIBLE,0),
+                       NVL(IMPUESTO_IVA,0),
+                       substr(NVL(TO_CHAR(COD_BENEF),'766666667'),1,16), 
+                       NVL(COD_ACT_BENEF,1),
+                       NVL(COD_PAGO,0),
+                       NVL(MCA_CAJA_BCO,'N'),NVL(IMP_IMPTOS_MON_LOCAL,0),
+                       NVL(IMP_IMPTOS_MON_EXT,0),NVL(COD_MON_IMPTOS,0),
+                       NVL(COD_CTA_SIMPLIF,'N'),NVL(MCA_MON,'N'),
+                       NVL(MCA_MON_IMPTOS,'N'),
+                       NVL(COD_CTA_IMPTOS,'N'),NUM_OPER_ASIENTO,
+                       NVL(TC,1),
+                       NVL(MCA_CHEQ_ANT,'N'),
+                       COD_CPTO_LIQ_GES,
+                       substr(lpad(NUM_IDENTIF_AUX1,13,'0'),4,13),
+                       TIPO_ACTU,COD_MON,COD_TARJETA, TIPO_CTA_AUX1,
+                       substr(desc_movim,22,4),
+                       TO_CHAR(FECHA_VALOR,'DD-MON-YYYY'),
+					   lpad(substr(num_ord_pago,9,6),6,0)
+					   ,lpad(numero_talon,10,0)
+                   INTO
+                       :X-COD-CIA, :X-FEC-ASIENTO, :X-COD-OFIC-CONTAB,
+                       :X-COD-OFIC-CIAL, :X-NUM-ASIENTO, :X-COD-OFIC-IMPUT, 
+					   :X-COD-CTA-CTABLE,:X-COD-CTABLE,
+					   :X-COD-PROD, :X-COD-RAMO, :X-COD-SECC,
+                       :X-IMP-MON-PAIS, :X-MCA-DEBE-HABER, :X-IMP-MON-EXT,
+                       :X-COD-MON, :X-BASE-IMPONIBLE, :X-IMPUESTO-IVA,
+                       :X-COD-BENEF, :X-COD-ACT-BENEF, :X-COD-PAGO, 
+                       :X-MCA-CAJA-BCO, :X-IMP-IMPTOS-MON-LOCAL,
+                       :X-IMP-IMPTOS-MON-EXT, :X-COD-MON-IMPTOS,
+                       :X-COD-CTA-SIMPLIF, :X-MCA-MON, :X-MCA-MON-IMPTOS,
+                       :X-COD-CTA-IMPTOS, :X-NUM-OPER-ASIENTO, :X-TC,
+                       :X-MCA-CHEQ-ANT,
+                       :X-COD-CPTO-LIQ-GES,
+                       :X-NUM-IDENTIF-AUX1,:X-ACTU,:MON ,:X-COD-TARJETA,
+                       :X-TIPO-CTA-AUX1,
+                       :davivienda,:fecha-ch,:NUM-ORD-PAGO,:NUMERO-TALON
+                  FROM A5021600
+                  WHERE TIPO_ACTU IN ('CB','TT') 
+                    AND MCA_CAJA_BCO    = 'B'
+                    AND MCA_DEBE_HABER  = 'D'
+                    AND COD_PAGO IN (1,5,8)
+                    AND COD_CIA         = :TCOD-CIA
+                    AND NUM_IDENTIF_AUX1 IS NOT NULL
+                    AND NVL(MCA_TRASPASO,'N') <> 'S'
+             ORDER BY COD_OFIC_CONTAB,
+                      COD_OFIC_CIAL,
+                      COD_CTA_CTABLE,
+                      NUM_IDENTIF_AUX1,
+                      DECODE(NVL(MCA_CHEQ_ANT,'N'),'S',1,2)
+             END-EXEC.
+             MOVE RESULTADO TO WS-RESULTADO.
+      * 
+      *----------------------------------------------------------------*
+       LEER-DIARIO-AGR-INICIAL.
+      *-----------------------*
+             PERFORM LIMPIA-DIARIO.
+             PERFORM SELECCION.
+             IF WS-RESULTADO NOT = 4
+				  PERFORM CAMBIA-COMPROBANTE
+                  PERFORM INSERTA-MVTOS
+                  PERFORM BUSCO-IAS712
+               PERFORM AGRUPO      THRU F-AGRUPO
+               PERFORM GUARDO      THRU F-GUARDO
+             END-IF.
+      *
+      *----------------------------------------------------------------*
+       LEER-DIARIO-AGR-INICIAL-CH.
+      *--------------------------*
+             PERFORM LIMPIA-DIARIO.
+             PERFORM SELECCION-CH.
+             IF WS-RESULTADO NOT = 4
+				PERFORM CAMBIA-COMPROBANTE
+                                PERFORM BUSCO-IAS712
+                                PERFORM AGRUPO      THRU F-AGRUPO
+                                PERFORM GUARDO      THRU F-GUARDO
+                      IF COD-PAGO NOT = X-COD-PAGO
+                        AND COD-CTA-CTABLE   =  X-COD-CTA-CTABLE 
+                        AND COD-CIA          =  X-COD-CIA   
+                        AND COD-OFIC-CONTAB  =  X-COD-OFIC-CONTAB 
+                        AND COD-OFIC-CIAL    =  X-COD-OFIC-CIAL    
+                        AND TIPO-CTA-AUX1    =  X-TIPO-CTA-AUX1
+                        AND NUM-IDENTIF-AUX1 =  X-NUM-IDENTIF-AUX1 
+                        PERFORM CORTE     THRU F-CORTE
+                      END-IF
+             END-IF.
+      *
+      *----------------------------------------------------------------*
+       LEER-DIARIO-AGR-CH.
+      *------------------*
+      *--------------SE SUMARIZARAN LOS IMPORTES-----------------------*
+             PERFORM SELECCION-CH.
+      *
+             IF WS-RESULTADO NOT = 4
+               ADD 1 TO CONTADOR 
+			   PERFORM CAMBIA-COMPROBANTE
+               IF COD-CIA          NOT = X-COD-CIA          OR
+                  COD-OFIC-CONTAB  NOT = X-COD-OFIC-CONTAB  OR
+                  COD-OFIC-CIAL    NOT = X-COD-OFIC-CIAL    OR
+                  COD-CTA-CTABLE   NOT = X-COD-CTA-CTABLE   OR
+                  TIPO-CTA-AUX1    NOT = X-TIPO-CTA-AUX1    OR
+                  NUM-IDENTIF-AUX1 NOT = X-NUM-IDENTIF-AUX1 OR
+		          COD-PAGO         NOT = X-COD-PAGO   
+                      PERFORM CORTE     THRU F-CORTE
+                      PERFORM GUARDO    THRU F-GUARDO
+               ELSE
+                      PERFORM AGRUPO    THRU F-AGRUPO
+             ELSE
+               PERFORM CORTE
+			 END-IF.
+
+      *
+      *----------------------------------------------------------------*
+       LEER-DIARIO-AGR.
+      *---------------*
+      *--------------SE SUMARIZARAN LOS IMPORTES-----------------------*
+             PERFORM SELECCION.
+      *
+             IF WS-RESULTADO NOT = 4
+                ADD 1 TO CONTADOR 
+				PERFORM CAMBIA-COMPROBANTE
+                 IF COD-CIA         NOT = X-COD-CIA          OR
+                    COD-OFIC-CONTAB NOT = X-COD-OFIC-CONTAB  OR
+                    COD-OFIC-CIAL   NOT = X-COD-OFIC-CIAL    OR
+                    COD-CTA-CTABLE  NOT = X-COD-CTA-CTABLE   OR
+                    COD-CTA-IMPTOS  NOT = X-COD-CTA-IMPTOS   OR
+                    MCA-DEBE-HABER  NOT = X-MCA-DEBE-HABER   OR
+                    COD-PAGO  NOT = X-COD-PAGO   OR
+                  ( COD-SECC      NOT = X-COD-SECC         AND
+                    EXISTE-CTA    =     'S'                )
+                       PERFORM CORTE     THRU F-CORTE
+                       PERFORM GUARDO    THRU F-GUARDO
+                 ELSE
+                       PERFORM AGRUPO    THRU F-AGRUPO
+             ELSE
+               PERFORM CORTE.
+      *
+      *----------------------------------------------------------------*
+       LEER-DIARIO-IND.
+      *---------------*
+
+
+             EXEC SQL
+                SELECT COD_CIA, TO_CHAR(FEC_ASIENTO,'DD-MON-YYYY'),
+                       COD_OFIC_CONTAB,
+                       COD_OFIC_CIAL, NUM_ASIENTO, NUM_OPER_ASIENTO,
+                       TIPO_ACTU, COD_CAUSA_ANU, COD_CPTO_LIQ_GES,
+                       COD_USER, COD_OFIC_IMPUT, COD_CTA_CTABLE,
+                       TIPO_CTA_AUX1, COD_CIA_AUX1, COD_OFIC_IMPUT_AUX1,
+                       substr(lpad(NUM_IDENTIF_AUX1,13,'0'),4,13),
+                       TO_CHAR(FECHA_VALOR,'DD-MON-YYYY'),
+                       TO_CHAR(FECHA_VCTO,'DD-MON-YYYY'),
+                       COD_OFIC_CONTAB_CRUCE, NUM_ORD_CRUCE, DESC_MOVIM,
+                       substr(desc_movim,22,4),
+                       NUM_POL1, NUM_END, NUM_CUOTA, RECIBO,
+                       CLAVE_GESTOR, COD_COBRO, NUM_SINI, NRO_EXPED,
+                       COD_SECC, COD_RAMO, COD_PROD, COD_EMP,
+                       IMP_MON_PAIS, MCA_DEBE_HABER, IMP_MON_EXT,
+                       COD_MON, NVL(TC,1), BASE_IMPONIBLE,
+                       TO_CHAR(FECHA_CAPTURA,'DD-MON-YYYY'),
+                       TIPO_OPER_SINI,  TO_CHAR(FECHA_FACTURA,'DD-MON-YYYY'),
+                       IMPUESTO_IVA,
+                       NOMBRE_RAZON_SOCIAL, 
+                       substr(NVL(TO_CHAR(COD_BENEF),'766666667'),1,16), 
+                       nvl(COD_ACT_BENEF,1), NUM_LIQ_GES,
+                       COD_PAGO, NOMBRE_ENTIDAD_TALON, 
+                       substr(lpad(NUMERO_TALON,15,'0'),6,15),
+                       NUM_ENTIDAD, NUMERO_CUENTA, MCA_PLAZA, NOM_PLAZA,
+                       MCA_CAJA_BCO, IMP_IMPTOS_MON_LOCAL,
+                       IMP_IMPTOS_MON_EXT, COD_MON_IMPTOS, COD_USER_REC,
+                       COD_CTA_SIMPLIF, COD_CTA_SIMPLIF_REC,
+                       MCA_TRASPASO, MCA_MON, MCA_MON_IMPTOS, NUM_LIQ,
+                       COD_CTA_IMPTOS,NRO_FACTURA,NVL(MCA_CHEQ_ANT,'N') ,
+                       CONCEPTO,
+                       TO_CHAR(FECHA_VALOR,'DD-MON-YYYY'),
+					   lpad(substr(num_ord_pago,9,6),6,0),
+					   lpad(numero_talon,10,0)
+                   INTO
+                       :COD-CIA, :FEC-ASIENTO, :COD-OFIC-CONTAB,
+                       :COD-OFIC-CIAL, :NUM-ASIENTO, :NUM-OPER-ASIENTO,
+                       :TIPO-ACTU, :COD-CAUSA-ANU, :COD-CPTO-LIQ-GES,
+                       :COD-USER, :COD-OFIC-IMPUT, :COD-CTA-CTABLE,
+                       :TIPO-CTA-AUX1, :COD-CIA-AUX1, :COD-OFIC-IMPUT-AUX1,
+                       :NUM-IDENTIF-AUX1, :FECHA-VALOR, :FECHA-VCTO,
+                       :COD-OFIC-CONTAB-CRUCE, :NUM-ORD-CRUCE, :DESC-MOVIM,
+                       :davivienda,
+                       :NUM-POL1, :NUM-END, :NUM-CUOTA, :RECIBO,
+                       :CLAVE-GESTOR, :COD-COBRO, :NUM-SINI, :NRO-EXPED,
+                       :COD-SECC, :COD-RAMO, :COD-PROD, :COD-EMP,
+                       :IMP-MON-PAIS, :MCA-DEBE-HABER, :IMP-MON-EXT,
+                       :COD-MON, :TC, :BASE-IMPONIBLE, :FECHA-CAPTURA,
+                       :TIPO-OPER-SINI, :FECHA-FACTURA, :IMPUESTO-IVA,
+                       :NOMBRE-RAZON-SOCIAL, :COD-BENEF, :COD-ACT-BENEF,
+                       :NUM-LIQ-GES,
+                       :COD-PAGO, :NOMBRE-ENTIDAD-TALON, :NUMERO-TALON,
+                       :NUM-ENTIDAD, :NUMERO-CUENTA, :MCA-PLAZA,:NOM-PLAZA,
+                       :MCA-CAJA-BCO, :IMP-IMPTOS-MON-LOCAL,
+                       :IMP-IMPTOS-MON-EXT, :COD-MON-IMPTOS, :COD-USER-REC,
+                       :COD-CTA-SIMPLIF, :COD-CTA-SIMPLIF-REC,
+                       :MCA-TRASPASO, :MCA-MON, :MCA-MON-IMPTOS, :NUM-LIQ,
+                       :COD-CTA-IMPTOS,:NRO-FACTURA,:MCA-CHEQ-ANT,
+                       :CONCEPTO-1,
+                       :FECHA-CH,
+					   :NUM-ORD-PAGO,
+					   :NUMERO-TALON
+           FROM A5021600
+           where
+		   (
+		   TIPO_ACTU = :ACTU
+           AND COD_MON   = :MON
+           AND COD_CIA   = :TCOD-CIA
+		   AND SUBSTR(COD_CTA_CTABLE,1,4)   = :CODCTACTABLE
+		   AND MCA_DEBE_HABER   = :DEBEHABER
+		   AND NVL(COD_PAGO, 0) = NVL(:PAGO,0)
+		   AND NVL(TIPO_CTA_AUX1,'X') = NVL(:AUX1,'X')
+           AND ( (NUM_IDENTIF_AUX1 IS NULL) 
+		   OR
+               (TIPO_ACTU IN ('TT' ,'CB')
+           AND MCA_CAJA_BCO    = 'B'
+           AND MCA_DEBE_HABER  = 'D'
+           AND COD_PAGO = 2
+           AND NUM_IDENTIF_AUX1 IS NOT NULL) 
+		   OR
+               ( NUM_IDENTIF_AUX1 IS NOT NULL AND
+                 COD_PAGO         in( 5,8)         AND 
+                 TIPO_ACTU        = 'CB'      AND 
+                 MCA_DEBE_HABER   = 'H' ))
+		    	)
+            ORDER BY TIPO_ACTU,COD_MON
+            END-EXEC.
+                 IF RESULTADO NOT = 4
+                    PERFORM INSERTA-MVTOS
+                    MOVE 1 TO RESULTADO
+                 END-IF.
+      *
+      *----------------------------------------------------------------*
+       INSERTA-IASFIC.  
+      *--------------*
+            PERFORM VALIDA-CB.
+            PERFORM VER-PARAMETROS.
+      *       PERFORM DISPLAYA-IASFIC.
+      *       PERFORM DISPLAYAREMOS.
+              if ws-agrupa = 'A' then 
+                 move    '766666667'  to  IAS220-CCOLABO
+                 move     1  to  IAS220-CACTIV 
+                 MOVE 'B'           TO IAS220-LBNFPRO
+              end-if
+            EXEC SQL
+                 BEGIN
+                 INSERT INTO IASFIC_tes
+                 (IAS220_CEMPRES,IAS220_CEJERCI,IAS220_CSUCURS,
+                 IAS220_CSUCCAB,IAS220_CDELEGA,IAS220_LASIENTO,
+                 IAS220_DFECAPU,IAS220_FASIDEF,IAS220_LTIPOAS,
+                 IAS220_CCLAASI, IAS220_CASIORI,IAS220_CASIREN,
+                 IAS220_CAPUORI,IAS220_CAPUREN, IAS220_CCUENTA, 
+                 IAS220_CCONTRA,IAS220_CCONAGR,IAS220_CCONCEP, 
+                 IAS220_XCONCEP,IAS220_LCLAINF,IAS220_XDOCUME, 
+                 IAS220_DVENCIM,IAS220_DFECHVA,IAS220_CCENPRO, 
+                 IAS220_CCTATES,IAS220_CCTADOM,IAS220_NDEBE, 
+                 IAS220_NHABER,IAS220_CDIVISA,IAS220_CTIPCAM, 
+                 IAS220_NDEBELOC,IAS220_NHABERLOC,IAS220_NTIPCTE, 
+                 IAS220_CDIVCTE,IAS220_NDEBECTE,IAS220_NHABERCTE, 
+                 IAS220_CCTAAUX,IAS220_CBASIVA,IAS220_CTIPIVA, 
+                 IAS220_NCUOTA,IAS220_CCTAIVA,IAS220_XCTAAUX, 
+                 IAS220_NIVA1,IAS220_CSIGNO1,IAS220_CSIGNO2, 
+                 IAS220_NIVA2,IAS220_NIVA3,IAS220_LCONVAL,IAS220_LBNFPRO,
+                 IAS220_CPRODU,IAS220_CACTIV,IAS220_CCOLABO,
+                 IAS220_FCREA,IAS220_USUCREA,IAS220_FMODI,IAS220_USUMODI,
+                 IAS220_XCLAGEN,IAS220_CDELEGAC,IAS220_CSUBCEN)
+               SELECT
+                 :IAS220-CEMPRES,:IAS220-CEJERCI,:IAS220-CSUCURS,
+                 :IAS220-CSUCCAB,:IAS220-CDELEGA,:IAS220-LASIENTO,
+                 TO_DATE(:IAS220-DFECAPU, 'DD-MON-YYYY' ),
+                 TO_DATE(:IAS220-DFECAPU, 'DD-MON-YYYY' ),
+                 :IAS220-LTIPOAS,
+                 :IAS220-CCLAASI,
+                 RTRIM(SUBSTR(:IAS220-CASIORI,1,:IAS721-NASIENTO)),
+                 :IAS220-CASIREN,
+                 :IAS220-CAPUORI,:IAS220-CAPUREN,:IAS220-CCUENTA, 
+                 :IAS220-CCONTRA,LTRIM(:IAS220-CCONAGR,'0'),
+                 :IAS220-CCONCEP,:IAS220-XCONCEP,:IAS220-LCLAINF,
+                 ltrim(nvl(:ias220-xdocume,:recibo),'0'),
+                 TO_DATE(:IAS220-DVENCIM, 'DD-MON-YYYY' ),
+                 TO_DATE(:IAS220-DFECHVA, 'DD-MON-YYYY' ),
+                 NVL(:IAS220-CCENPRO,' '),
+                 :IAS220-CCTATES,:IAS220-CCTADOM,:IAS220-NDEBE, 
+                 :IAS220-NHABER,:IAS220-CDIVISA,:IAS220-CTIPCAM, 
+                 :IAS220-NDEBELOC,:IAS220-NHABERLOC,:IAS220-NTIPCTE, 
+                 :IAS220-CDIVCTE,:IAS220-NDEBECTE,:IAS220-NHABERCTE, 
+                 :IAS220-CCTAAUX,:IAS220-CBASIVA,:IAS220-CTIPIVA, 
+                 :IAS220-NCUOTA,:IAS220-CCTAIVA,:IAS220-XCTAAUX, 
+                 :IAS220-NIVA1,:IAS220-CSIGNO1,:IAS220-CSIGNO2, 
+                 :IAS220-NIVA2,:IAS220-NIVA3,'A',
+              decode(:IAS220-CCOLABO,'766666667','B',:IAS220-LBNFPRO),
+                 :IAS220-CPRODU,
+                  decode(:IAS220-CCOLABO,'766666667',1,:IAS220-CACTIV),
+                 :IAS220-CCOLABO,SYSDATE,
+                 DECODE(:IAS220-USUCREA,'N',:CODUSR,:IAS220-USUCREA),
+                 TO_DATE(:IAS220-DFECAPU, 'DD-MON-YYYY' ),
+                 DECODE(:IAS220-USUCREA,'N',:CODUSR,:IAS220-USUCREA),
+                 TO_DATE(:IAS220-DFECAPU, 'DD-MON-YYYY' ),
+                 :IAS220-CDELEGAC,:IAS220-CSUBCEN
+                 FROM DUAL 
+                 WHERE NVL( :IAS220-NDEBELOC  ,0) <> 0 OR
+                       NVL( :IAS220-NHABERLOC ,0) <> 0
+                 ;
+                 END;
+            END-EXEC.
+            PERFORM LIMPIA-IAS220.
+      *
+      *----------------------------------------------------------------*
+      *           ltrim(nvl(:ias220-xdocume,nvl(:recibo,:NUM-ORD-PAGO)),'0'),
+       SACA-SUBCEN-IMPUT.
+      *-----------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+               SELECT
+                  COD_DIV_DREG 
+               INTO
+                 :COD-DIV-DREG 
+               FROM A1000702
+               WHERE COD_AGENCIA  = :COD-OFIC-CIAL
+            END-EXEC.
+      *
+            IF HOLEST-LSUBCEN = 'N' 
+               MOVE 0            TO IAS220-CSUBCEN
+            ELSE 
+               MOVE COD-DIV-DREG TO IAS220-CSUBCEN
+            END-IF.
+      *
+      *----------------------------------------------------------------*
+       SACA-ESTRUC-CONTA.
+      *-----------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+                SELECT 
+                    COD_OFI_COMER
+                INTO 
+                   :COD-OFI-COMER
+                FROM A1000702
+                WHERE COD_AGENCIA  = :COD-OFIC-CONTAB 
+            END-EXEC.
+      *
+            IF HOLEST-LSUCURS = 'N' 
+               MOVE 0             TO IAS220-CSUCURS
+            ELSE
+               MOVE COD-OFI-COMER TO IAS220-CSUCURS
+            END-IF.
+      *
+            IF HOLEST-LDELEGA = 'N' 
+               MOVE 0               TO IAS220-CDELEGAC 
+            ELSE
+               MOVE COD-OFIC-CONTAB TO IAS220-CDELEGAC
+            END-IF.
+      *
+      *----------------------------------------------------------------*
+       ESTRUC-EMPRESA.
+      *--------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+               SELECT 
+                    HOLEST_LSUCURS,  
+                    HOLEST_LDELEGA, 
+                    HOLEST_LSUBCEN
+               INTO 
+                   :HOLEST-LSUCURS,
+                   :HOLEST-LDELEGA, 
+                   :HOLEST-LSUBCEN
+               FROM HOLEST
+               WHERE 
+                    HOLEST_NCODIGO = :TCOD-CIA
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-ESTRUCTURAL.
+      *----------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+                SELECT 
+                     COD_OFI_COMER
+                INTO 
+                    :COD-OFI-COMER
+                FROM A1000702
+                WHERE COD_AGENCIA  = :COD-OFIC-CIAL
+            END-EXEC.
+      *
+            IF HOLEST-LSUCURS = 'N' 
+               MOVE 0             TO IAS220-CSUCCAB
+            ELSE 
+               MOVE COD-OFI-COMER TO IAS220-CSUCCAB
+            END-IF.
+      *
+            IF HOLEST-LDELEGA = 'N' 
+               MOVE 0             TO IAS220-CDELEGA
+            ELSE
+               MOVE COD-OFIC-CIAL TO IAS220-CDELEGA
+            END-IF.
+      *
+      *----------------------------------------------------------------*
+       SACA-DESC-ACTU.
+      *--------------*
+            IF ELE1(I)   = 'A' OR  DESC-MOVIM = SPACES
+               PERFORM BUSCA-DESC-ACTU
+               MOVE DESC-ACTU     TO IAS220-XCONCEP
+            ELSE
+              MOVE DESC-MOVIM    TO IAS220-XCONCEP
+            END-IF.
+      *
+            IF ( ACTU = 'CB'  OR ACTU = 'TT' )  AND 
+                 TIPO-CTA-AUX1 NOT EQUAL SPACES
+             MOVE TIPO-CTA-AUX1    TO IAS220-CCONAGR
+            ELSE
+             MOVE COD-CPTO-LIQ-GES TO IAS220-CCONAGR.
+      *
+            IF ACTU = 'CV'  or ACTU = 'RT' 
+               MOVE DESC-MOVIM    TO IAS220-XCONCEP
+               MOVE 'C'           TO IAS220-CCONAGR
+            END-IF.
+      *
+            IF ACTU = 'PV' 
+               MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+               MOVE DESC-MOVIM    TO IAS220-XCONCEP
+               MOVE 'P'           TO IAS220-CCONAGR
+            END-IF.
+      *
+      *----------------------------------------------------------------*
+       BUSCA-DESC-ACTU.
+      *---------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+                SELECT 
+                     SUBSTR(DESC_ACTU,1,30)
+                INTO 
+                    :DESC-ACTU
+                FROM A5020600
+                WHERE 
+                    COD_CIA    = :TCOD-CIA
+                AND TIPO_ACTU  = :ACTU
+                AND COD_MON    = :MON
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-CTA-CHEQUE-ANT.   
+      *-------------------*
+                   MOVE 0 TO RESULTADO.
+            EXEC SQL
+                SELECT 
+                     COD_CTA_CTABLE      
+                INTO 
+                    :COD-CTA-CTABLE
+                FROM A5022600
+                WHERE 
+                      COD_CIA         = :TCOD-CIA
+                  AND MCA_CAJA_BCO    = DECODE(:COD-PAGO,'1','T','5','E')
+                  AND COD_MON         = :MON
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+      * BUSCA LA CTA DE RECAUDACION DE CUPONES O CHEQUES EN FUNCION A
+      * COD-PAGO.  
+      *----------------------------------------------------------------*
+       SACA-CTA-CHEQUE-ANT-CH.
+      *----------------------*
+                   MOVE 0 TO RESULTADO.
+            EXEC SQL
+                SELECT 
+                     COD_CTA_CTABLE      
+                INTO 
+                    :COD-CTA-CTABLE
+                FROM A5022600
+                WHERE
+          COD_CIA                 = :TCOD-CIA
+          AND MCA_CAJA_BCO        = DECODE(:COD-PAGO,'1','T','5','E')
+          AND COD_MON             = :MON-CH
+       END-EXEC.
+      *----------------------------------------------------------------*
+      *         SE ELIMINO DEL WHERE ANTERIOR CARDOSO DANIEL  
+      *   AND NVL(COD_TARJETA,-1) = DECODE(:COD-PAGO,'1',-1,:COD-TARJETA)
+      *----------------------------------------------------------------*
+      *------------*
+       SACA-DIV-CTE.           
+      *------------*
+                    MOVE 0 TO RESULTADO.
+            EXEC SQL
+                SELECT 
+                     IAS713_CCODIHO ,
+                     IAS713_CCODISO
+                INTO
+                    :IAS713-CCODIHO ,
+                    :IAS713-CCODISO
+                FROM IAS713
+                WHERE 
+                      IAS713_CEMPRES = :TCOD-CIA
+                  AND IAS713_CEJERCI = :EJERCICIO
+            END-EXEC.
+      *
+            PERFORM SACA-FECHA-ASIENTO.
+            PERFORM SACA-REDONDEO-HOL.
+            PERFORM SACA-TC-CTE.
+      *
+      *----------------------------------------------------------------*
+       SACA-FECHA-ASIENTO.           
+      *------------------*
+                   MOVE 0 TO RESULTADO.
+            EXEC SQL
+                SELECT 
+                     TO_CHAR(FEC_ASIENTO,'DD-MON-YYYY')
+                INTO 
+                    :FEC-ASIENTO 
+                FROM A5021700
+                WHERE 
+                    COD_CIA       = :TCOD-CIA
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-REDONDEO-HOL.           
+      *-----------------*
+                   MOVE 0 TO RESULTADO.
+            EXEC SQL
+                SELECT 
+                     REDONDEO
+                INTO 
+                    :REDONDEO-HOL
+                FROM A1000400
+                WHERE  COD_MON       = :IAS713-CCODIHO
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-TC-CTE.           
+      *-----------*
+                    MOVE 0 TO RESULTADO.
+            EXEC SQL
+                SELECT 
+                     NVL(TC1,1)
+                INTO 
+                     :TC1
+                FROM A1000500
+                WHERE COD_MON       = :IAS713-CCODIHO
+                  AND FECHA_TIPO_CAMBIO = (SELECT MAX(FECHA_TIPO_CAMBIO)
+                                             FROM A1000500
+                                           WHERE COD_MON =
+                                                 :IAS713-CCODIHO
+                                             AND FECHA_TIPO_CAMBIO <=
+                                   TO_DATE(:FEC-ASIENTO, 'DD-MON-YYYY' ))
+            END-EXEC.
+      *
+            IF RESULTADO = 4
+               MOVE 'NO ESTA CARGADO EL TIPO DE CAMBIO PARA LA MONEDA DE
+      -             'L HOLDING' TO OBSERVACION
+               PERFORM ACT-PARAMETROS
+               MOVE 2 TO RETURN-CODE
+               STOP RUN 
+            END-IF.
+      *
+            IF IAS713-CCODIHO = IAS713-CCODISO
+               MOVE 1   TO TC1
+            END-IF.
+      *
+      *----------------------------------------------------------------*
+       SACA-CAJERO.
+      *-----------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+              SELECT 
+                   DECODE(INSTR(USER,'OPS$'),'1',SUBSTR(USER,5,8),
+                   SUBSTR(USER,1,8))
+              INTO 
+                  :CODUSR
+              FROM DUAL
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-TIPO-IVA.
+      *-------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+              SELECT 
+                   IAS110_CCLAIVA
+              INTO 
+                  :IAS110-CCLAIVA
+              FROM IAS110
+              WHERE 
+                    IAS110_CEMPRES   = :TCOD-CIA
+                AND IAS110_CEJERCI   = :EJERCICIO
+                AND IAS110_CCUENTA   = :COD-CTA-CTABLE
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-PORC-IVA.
+      *-------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+              SELECT 
+                   HOLIVA3_NPORC1,
+                   HOLIVA3_XSIGNO1,
+                   HOLIVA3_NPORC2,
+                   HOLIVA3_XSIGNO2,
+                   HOLIVA3_NPORC3
+              INTO 
+                  :HOLIVA3-NPORC1,
+                  :HOLIVA3-XSIGNO1,
+                  :HOLIVA3-NPORC2,
+                  :HOLIVA3-XSIGNO2,
+                  :HOLIVA3-NPORC3
+              FROM HOLIVA3
+              WHERE 
+                   HOLIVA3_CEJERCI = :EJERCICIO
+               AND HOLIVA3_CTIVA   = SUBSTR(:IAS110-CCLAIVA,2,1)
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-CTA-BCO.  
+      *------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+              SELECT 
+                   COD_CTA_CTABLE 
+              INTO 
+                  :COD-CTA-CTABLE
+              FROM A5022600
+              WHERE 
+                    COD_CIA         = :TCOD-CIA
+                AND COD_CTA_SIMPLIF = :COD-CTA-SIMPLIF
+                AND MCA_CAJA_BCO    = 'B'
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-CABECERAS.
+      *--------------*
+            EXEC SQL
+              SELECT 
+                  TO_CHAR(IAS220_DFECAPU,'DD-MON-YYYY'),
+                  IAS220_CEMPRES,
+                  IAS220_CDELEGAC,
+                  IAS220_CASIORI, 
+                  IAS220_CCLAASI,
+                  SUM(IAS220_NDEBELOC) , 
+                  SUM(IAS220_NHABERLOC)
+             INTO 
+                 :IASCAB-DFECAPU, 
+                 :IASCAB-CEMPRES, 
+                 :IASCAB-CDELEGAC,
+                 :IASCAB-CASIORI, 
+                 :IASCAB-CCLAASI,
+                 :IASCAB-NDEBELOC, 
+                 :IASCAB-NHABERLOC
+             FROM IASFIC_tes
+             WHERE IAS220_CCLAASI = 'TES'  AND
+                   IAS220_CEMPRES = :TCOD-CIA
+             GROUP BY TO_CHAR(IAS220_DFECAPU,'DD-MON-YYYY'),
+                      IAS220_CEMPRES, IAS220_CDELEGAC, 
+                      IAS220_CASIORI,  IAS220_CCLAASI 
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       INSERTA-TOTALES.
+      *---------------*
+            EXEC SQL
+               BEGIN
+               INSERT INTO IASCAB
+                     (IASCAB_DFECAPU,  IASCAB_CEMPRES, IASCAB_CDELEGAC,
+                      IASCAB_CASIORI,  IASCAB_CCLAASI, IASCAB_NDEBELOC,
+                      IASCAB_NHABERLOC)
+                VALUES
+                     (TO_DATE(:IASCAB-DFECAPU, 'DD-MON-YYYY' ),
+                      :IASCAB-CEMPRES, :IASCAB-CDELEGAC,
+                      :IASCAB-CASIORI,  :IASCAB-CCLAASI, :IASCAB-NDEBELOC,
+                      :IASCAB-NHABERLOC)
+               ;
+               END;
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-IAS700.   
+      *-----------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+              SELECT 
+                  IAS700_LPAR2,
+                  IAS700_LPAR4,
+                  IAS700_LPAR8,
+                  IAS700_LPAR12, 
+                  IAS700_LPAR14,
+                  IAS700_LPAR15,
+                  IAS700_LPAR16
+              INTO 
+                 :IAS700-LPAR2,
+                 :IAS700-LPAR4,
+                 :IAS700-LPAR8,
+                 :IAS700-LPAR12,
+                 :IAS700-LPAR14,
+                 :IAS700-LPAR15,
+                 :IAS700-LPAR16
+              FROM IAS700
+              WHERE 
+                  IAS700_CEMPRES = :TCOD-CIA        
+             AND  IAS700_CEJERCI = :EJERCICIO
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-IAS721.   
+      *-----------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+               SELECT
+                    IAS721_NASIENTO
+               INTO 
+                   :IAS721-NASIENTO
+               FROM IAS721
+               WHERE 
+                     IAS721_CEMPRES = :TCOD-CIA        
+                AND  IAS721_CEJERCI = :EJERCICIO
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       SACA-IAS110.   
+      *-----------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+              SELECT 
+                  NVL(IAS110_LAJUINF,'N')
+              INTO 
+                 :IAS110-LAJUINF
+              FROM IAS110
+              WHERE 
+                    IAS110_CEMPRES   = :TCOD-CIA
+                AND IAS110_CEJERCI   = :EJERCICIO
+                AND IAS110_CCLASIF   = 'D'
+                AND IAS110_CCUENTA   = :COD-CTA-CTABLE
+            END-EXEC.
+                IF RESULTADO = 4
+                   MOVE  'N'  TO  IAS110-LAJUINF
+                END-IF.
+      *
+      *----------------------------------------------------------------*
+       DOCUM-VCTO.
+      *----------*
+      *      MOVE SPACES  TO IAS220-XDOCUME
+            MOVE SPACES  TO IAS220-DVENCIM.
+            MOVE 0 TO RESULTADO.
+
+            EXEC SQL
+              SELECT 
+                     IAS708_CEMPRES
+              INTO 
+                    :IAS708-CEMPRES
+              FROM IAS708
+              WHERE 
+                    IAS708_CEMPRES  = :TCOD-CIA
+                AND IAS708_CEJERCI  = :EJERCICIO
+                AND (:COD-CTA-CTABLE LIKE IAS708_CCUENTA || '%' 
+                     AND IAS708_CCUENTA IS NOT NULL)
+      #              AND IAS708_CCUENTB IS NULL)
+            END-EXEC.
+      *
+            IF RESULTADO NOT = 4
+               PERFORM MUEVE-DOCUM
+            END-IF.
+               PERFORM DOCUM-VCTO-1.
+            MOVE 0 TO RESULTADO.
+      *
+      *----------------------------------------------------------------*
+       DOCUM-VCTO-1.
+      *------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+              SELECT 
+                   IAS708_CEMPRES
+              INTO 
+                  :IAS708-CEMPRES
+              FROM IAS708
+              WHERE 
+                    IAS708_CEMPRES  = :TCOD-CIA
+                AND IAS708_CEJERCI  = :EJERCICIO
+                AND (:COD-CTA-CTABLE LIKE IAS708_CCUENTB ||'%' 
+                     AND IAS708_CCUENTB IS NOT NULL)
+      #              AND IAS708_CCUENTA IS NULL)
+            END-EXEC.
+      *
+            IF RESULTADO NOT = 4
+               PERFORM MUEVE-DOCUM-VCTO
+            END-IF.
+      *
+      *----------------------------------------------------------------*
+      *-------se utiliza solo para los tipo_actu = 'CG' y que tengan----*
+      *--------mca_caja_bco <> null-------------------------------------*
+       EXISTE-DOCUMENTO. 
+      *----------------*
+            SET NO-EXISTE-DOCUM  TO TRUE.
+            MOVE 0 TO RESULTADO.
+
+            EXEC SQL
+              SELECT 
+                   IAS708_CEMPRES
+              INTO 
+                  :IAS708-CEMPRES
+              FROM IAS708
+              WHERE 
+                    IAS708_CEMPRES  = :TCOD-CIA
+                AND IAS708_CEJERCI  = :EJERCICIO
+                AND ((:X-COD-CTA-CTABLE LIKE IAS708_CCUENTA || '%' 
+                     AND IAS708_CCUENTA IS NOT NULL)  
+      #              AND IAS708_CCUENTB IS NULL)  
+                     OR
+                   (:X-COD-CTA-CTABLE LIKE IAS708_CCUENTB ||'%'
+                     AND IAS708_CCUENTB IS NOT NULL))
+      #              AND IAS708_CCUENTA IS NULL))
+            END-EXEC.
+      *
+            IF RESULTADO NOT = 4
+               SET EXISTE-DOCUM   TO TRUE
+            END-IF.
+      *
+      *----------------------------------------------------------------*
+       SACA-RAMO-CTABLE.
+      *----------------*
+                  MOVE 0 TO RESULTADO.
+            EXEC SQL
+              SELECT 
+                   HOLEXP_CEXPLOT
+              INTO 
+                 :HOLEXP-CEXPLOT
+              FROM G1002000
+              WHERE COD_CIA        = :TCOD-CIA
+                AND HOLEXP_NCONVER = :COD-SECC
+            END-EXEC.
+      *
+      *----------------------------------------------------------------* 
+       VERI-CENTROS.
+      *------------*
+                 MOVE 0 TO RESULTADO.
+           EXEC SQL
+               SELECT 
+                   IAS712_CEMPRES
+               INTO 
+                  :IAS712-CEMPRES
+               FROM IAS712
+               WHERE IAS712_CEMPRES = :TCOD-CIA
+                 AND IAS712_CEJERCI = :EJERCICIO
+                 AND (:COD-CTA-CTABLE LIKE IAS712_CCUENTA||'%'
+                      OR
+                      IAS712_CCUENTA LIKE :COD-CTA-CTABLE||'%' )
+           END-EXEC.
+      *
+           IF RESULTADO = 4
+             MOVE SPACES    TO IAS220-CCENPRO
+           END-IF.
+      *
+      *----------------------------------------------------------------*
+       GUARDO.
+      *------*
+            MOVE X-COD-CIA              TO COD-CIA.
+            MOVE X-COD-OFIC-CONTAB      TO COD-OFIC-CONTAB.
+            MOVE X-COD-OFIC-CIAL        TO COD-OFIC-CIAL.
+            MOVE X-COD-CTA-CTABLE       TO COD-CTA-CTABLE.
+            MOVE X-COD-CTA-IMPTOS       TO COD-CTA-IMPTOS.
+            MOVE X-MCA-DEBE-HABER       TO MCA-DEBE-HABER.
+            MOVE X-COD-SECC             TO COD-SECC.
+            MOVE X-FEC-ASIENTO          TO FEC-ASIENTO.
+            MOVE X-NUM-ASIENTO          TO NUM-ASIENTO.
+            MOVE X-COD-OFIC-IMPUT       TO COD-OFIC-IMPUT.
+            MOVE X-COD-PROD             TO COD-PROD.
+            MOVE X-COD-RAMO             TO COD-RAMO.
+            MOVE X-COD-MON              TO COD-MON.
+            MOVE X-BASE-IMPONIBLE       TO BASE-IMPONIBLE.
+            MOVE X-IMPUESTO-IVA         TO IMPUESTO-IVA.
+            MOVE X-COD-BENEF            TO COD-BENEF.
+            MOVE X-COD-ACT-BENEF        TO COD-ACT-BENEF.
+            MOVE X-COD-PAGO             TO COD-PAGO.
+            MOVE X-COD-TARJETA          TO COD-TARJETA.
+            MOVE X-MCA-CAJA-BCO         TO MCA-CAJA-BCO.
+            MOVE X-COD-MON-IMPTOS       TO COD-MON-IMPTOS.
+            MOVE X-COD-CTA-SIMPLIF      TO COD-CTA-SIMPLIF.
+            MOVE X-MCA-MON              TO MCA-MON.  
+            MOVE X-MCA-MON-IMPTOS       TO MCA-MON-IMPTOS.
+            MOVE X-DESC-MOVIM           TO DESC-MOVIM.
+            MOVE X-NUM-OPER-ASIENTO     TO NUM-OPER-ASIENTO.
+            MOVE X-MCA-CHEQ-ANT         TO MCA-CHEQ-ANT.
+            MOVE X-COD-CPTO-LIQ-GES     TO COD-CPTO-LIQ-GES.
+            MOVE X-NUM-IDENTIF-AUX1     TO NUM-IDENTIF-AUX1.
+            MOVE X-TIPO-CTA-AUX1        TO TIPO-CTA-AUX1.
+            MOVE X-NRO-FACTURA          TO NRO-FACTURA.
+            MOVE X-FECHA-VCTO           TO FECHA-VCTO.
+            IF   X-ACTU NOT = SPACES
+                 MOVE X-ACTU            TO ACTU
+            END-IF.
+            MOVE ACTU                   TO ACTU-CH.
+            MOVE MON                    TO MON-CH.
+       F-GUARDO.
+      *
+      *----------------------------------------------------------------*
+       AGRUPO.
+      *------*
+
+            ADD X-IMP-MON-PAIS          TO IMP-MON-PAIS         .
+            ADD X-IMP-MON-EXT           TO IMP-MON-EXT          .
+            ADD X-IMP-IMPTOS-MON-LOCAL  TO IMP-IMPTOS-MON-LOCAL .
+            ADD X-IMP-IMPTOS-MON-EXT    TO IMP-IMPTOS-MON-EXT   .
+            IF X-MCA-CHEQ-ANT = 'S' 
+                MOVE 'S' TO HAYCHANT
+                ADD X-IMP-MON-PAIS         TO IMP-MON-PAIS-CHANT         
+                ADD X-IMP-MON-EXT          TO IMP-MON-EXT-CHANT          
+                ADD X-IMP-IMPTOS-MON-LOCAL TO IMP-IMPTOS-MON-LOCAL-CHANT 
+                ADD X-IMP-IMPTOS-MON-EXT   TO IMP-IMPTOS-MON-EXT-CHANT 
+           END-IF.
+       F-AGRUPO.
+      *
+      *----------------------------------------------------------------*
+      *
+      *       ANTES SUMABA TODOS LOS X-TC Y LUEGO LOS DIVIDIA POR LA 
+      *       CANTIDAD DE REGISTROS QUE HABIA AGRUPADO 
+      *
+      *     ADD X-TC                    TO SUM-TC               .
+      *     ADD 1                       TO CANTIDAD             .
+      *
+      *----------------------------------------------------------------*
+       CORTE.
+      *-----*
+      *     COMPUTE TC ROUNDED = SUM-TC / CANTIDAD.
+            COMPUTE TC ROUNDED = 
+              ( IMP-MON-PAIS + IMP-IMPTOS-MON-LOCAL ) / 
+              ( IMP-MON-EXT + IMP-IMPTOS-MON-EXT  )  .
+      *
+
+            IF NUM-IDENTIF-AUX1 = SPACES
+                  PERFORM INSERTA-MVTOS
+            ELSE
+                  PERFORM INSERTA-MVTOS-CH
+            END-IF.
+      *
+            MOVE 0 TO RESULTADO.
+            MOVE 0 TO IMP-MON-PAIS , IMP-MON-EXT , IMP-IMPTOS-MON-LOCAL ,
+                      IMP-IMPTOS-MON-EXT, SUM-TC.
+            MOVE 0 TO CANTIDAD.
+            PERFORM BUSCO-IAS712.
+            PERFORM AGRUPO   THRU F-AGRUPO.
+       F-CORTE.
+      *
+      *----------------------------------------------------------------*
+       DISPLAYAREMOS.
+      *-------------*
+      *     STOP 'INSERTA'.
+            DISPLAY ' X-COD-CIA              ' COD-CIA CONVERT.
+            DISPLAY ' X-COD-OFIC-CONTAB      ' COD-OFIC-CONTAB CONVERT.
+            DISPLAY ' X-COD-OFIC-CIAL        ' COD-OFIC-CIAL CONVERT.
+            DISPLAY ' X-COD-CTA-CTABLE       ' COD-CTA-CTABLE.
+            DISPLAY ' X-COD-CTA-IMPTOS       ' COD-CTA-IMPTOS.
+            DISPLAY ' X-MCA-DEBE-HABER       ' MCA-DEBE-HABER.
+            DISPLAY ' X-FEC-ASIENTO          ' FEC-ASIENTO.
+            DISPLAY ' X-NUM-ASIENTO          ' NUM-ASIENTO CONVERT.
+            DISPLAY ' X-COD-OFIC-IMPUT       ' COD-OFIC-IMPUT CONVERT.
+            DISPLAY ' X-COD-PROD             ' COD-PROD CONVERT.
+            DISPLAY ' X-COD-RAMO             ' COD-RAMO CONVERT.
+            DISPLAY ' X-COD-SECC             ' X-COD-SECC CONVERT.
+            DISPLAY ' COD-SECC               ' COD-SECC CONVERT.
+            DISPLAY ' X-COD-MON              ' COD-MON CONVERT.
+            DISPLAY ' X-BASE-IMPONIBLE       ' BASE-IMPONIBLE CONVERT.
+            DISPLAY ' X-IMPUESTO-IVA         ' IMPUESTO-IVA CONVERT.
+            DISPLAY ' X-COD-BENEF            ' COD-BENEF.
+            DISPLAY ' X-COD-ACT-BENEF        ' COD-ACT-BENEF CONVERT.
+            DISPLAY ' X-COD-PAGO             ' COD-PAGO CONVERT.
+            DISPLAY ' X-MCA-CAJA-BCO         ' MCA-CAJA-BCO.
+            DISPLAY ' X-COD-MON-IMPTOS       ' COD-MON-IMPTOS CONVERT.
+            DISPLAY ' X-COD-CTA-SIMPLIF      ' COD-CTA-SIMPLIF.
+            DISPLAY ' X-COD-TARJETA          ' COD-TARJETA CONVERT.
+            DISPLAY ' X-TIPO-ACTU            ' TIPO-ACTU.
+            DISPLAY 'NUM-IDENTIF-AUX1        ' NUM-IDENTIF-AUX1.
+            DISPLAY ' X-MCA-MON              ' MCA-MON.
+            DISPLAY ' X-MCA-MON-IMPTOS       ' MCA-MON-IMPTOS.
+            DISPLAY ' X-NUM-OPER-ASIENTO     ' NUM-OPER-ASIENTO CONVERT.
+
+      *----------------------------------------------------------------*
+       CAMBIA-COMPROBANTE.
+      *------------*
+		IF (X-COD-CTABLE = '1115' 
+                 or (X-COD-CTABLE = '1110' AND TCOD-CIA = 7) 
+                 or (X-COD-CTABLE = '1120' AND TCOD-CIA = 7))
+                    AND MON = 1
+		   MOVE 9999999 TO X-NUM-IDENTIF-AUX1.
+
+      *----------------------------------------------------------------*
+       BUSCO-IAS712.
+      *------------*
+
+                 MOVE 0 TO RESULTADO.
+           EXEC SQL
+               SELECT 
+                    IAS712_CEMPRES
+               INTO 
+                   :IAS712-CEMPRES
+               FROM IAS712
+               WHERE 
+                     IAS712_CEMPRES = :TCOD-CIA
+                 AND IAS712_CEJERCI = :EJERCICIO
+                 AND (:X-COD-CTA-CTABLE LIKE IAS712_CCUENTA||'%'
+                      OR
+                      IAS712_CCUENTA LIKE :X-COD-CTA-CTABLE||'%' )
+           END-EXEC.
+      *
+           IF RESULTADO = 4
+             MOVE 'N' TO EXISTE-CTA
+           ELSE
+             MOVE 'S' TO EXISTE-CTA
+           END-IF.
+      *
+      *----------------------------------------------------------------*
+       BUSCO-IAS110.
+      *------------*
+                MOVE 0 TO RESULTADO.
+           EXEC SQL
+               SELECT
+                     ''
+               INTO  
+                    :BLANCO
+               FROM 
+                    IAS110
+               WHERE 
+                     IAS110_CEMPRES = :TCOD-CIA
+                 AND IAS110_CEJERCI = :EJERCICIO
+                 AND IAS110_CCUENTA = :COD-CTA-CTABLE
+                 AND IAS110_CCLASIF = 'D'
+                 AND IAS110_LCTACOL = 'S'
+           END-EXEC.
+      *
+           IF RESULTADO = 4
+             MOVE 'N' TO TIENE-BENEF
+           ELSE
+             MOVE 'S' TO TIENE-BENEF
+           END-IF.
+      *
+      *----------------------------------------------------------------*
+       DEBE-O-HABER.
+      *------------*
+           IF ACTU = 'DC' 
+             PERFORM DESCRI
+           END-IF.
+      *
+           IF ACTU = 'CG'   AND DESC-MOVIM = 'N'
+              MOVE NUM-ORD-PAGO   TO IAS220-XDOCUME
+              PERFORM DESCRI-1
+           END-IF.
+      *
+           IF MCA-DEBE-HABER = 'D'
+             PERFORM DEBE
+           ELSE
+             PERFORM HABER
+           END-IF.
+      *
+      *----------------------------------------------------------------*
+       DESCRI.
+      *------*
+               MOVE 0 TO RESULTADO.
+           EXEC SQL
+              SELECT 
+                   DECODE(:MCA-DEBE-HABER,'D',
+                   substr('DESC.COMIS.PRODUCTOR: ' || :COD-PROD,1,30) ,
+                   substr('ANUL.DESC.COMIS.PROD: ' || :COD-PROD,1,30))
+              INTO 
+                  :DESC-MOVIM
+              FROM DUAL
+           END-EXEC.
+      *
+      *-- busca la descripcion para los movimentos que tienen informada  ---*
+      *-- la mca_caja_bco --------------------------------------------------*
+       DESCRI-1.
+              MOVE    0   TO  RESULTADO.
+              EXEC SQL
+              SELECT
+                  DESCRIPCION
+               INTO
+                 :DESC-MOVIM
+               FROM A5022700
+               WHERE 
+                    MCA_CAJA_BCO  =  :MCA-CAJA-BCO
+                END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       DEBE.
+      *----*
+           PERFORM DATOS-FIJOS.
+
+           MOVE IMP-MON-PAIS       TO IAS220-NDEBELOC.
+           IF COD-MON = 1
+             MOVE IMP-MON-PAIS       TO IAS220-NDEBE
+             MOVE 0                  TO IAS220-CDIVISA
+             MOVE 1                  TO IAS220-CTIPCAM
+           ELSE
+             MOVE IMP-MON-EXT        TO IAS220-NDEBE 
+             MOVE COD-MON            TO IAS220-CDIVISA
+             MOVE TC                 TO IAS220-CTIPCAM
+           END-IF.
+      *
+           MOVE TC1                TO IAS220-NTIPCTE.
+           MOVE IAS713-CCODIHO     TO IAS220-CDIVCTE.
+      *
+           MOVE 0 TO RESULTADO.
+           EXEC SQL
+               SELECT 
+                   ROUND( :IAS220-NDEBELOC / :TC1 , :REDONDEO-HOL)
+               INTO 
+                  :IAS220-NDEBECTE
+               FROM DUAL
+           END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       HABER.
+      *-----*
+           PERFORM DATOS-FIJOS.
+
+           MOVE IMP-MON-PAIS       TO IAS220-NHABERLOC.
+           IF COD-MON = 1
+             MOVE IMP-MON-PAIS       TO IAS220-NHABER
+             MOVE 0                  TO IAS220-CDIVISA
+             MOVE 1                  TO IAS220-CTIPCAM
+           ELSE
+             MOVE IMP-MON-EXT        TO IAS220-NHABER 
+             MOVE COD-MON            TO IAS220-CDIVISA
+             MOVE TC                 TO IAS220-CTIPCAM
+           END-IF.
+      *
+           MOVE TC1                TO IAS220-NTIPCTE.
+           MOVE IAS713-CCODIHO     TO IAS220-CDIVCTE.
+
+           MOVE 0 TO RESULTADO.
+           EXEC SQL
+              SELECT 
+                 ROUND( :IAS220-NHABERLOC / :TC1 , :REDONDEO-HOL)
+              INTO 
+                :IAS220-NHABERCTE
+              FROM DUAL
+           END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       DISPLAYA-IASFIC.
+      *---------------*
+      *      STOP 'INSERTA1'.
+             DISPLAY 'IAS220_CEMPRES *  ..' IAS220-CEMPRES CONVERT.
+             DISPLAY 'IAS220_CEJERCI *  ..' IAS220-CEJERCI CONVERT.
+             DISPLAY 'IAS220_CSUBCEN *  ..' IAS220-CSUBCEN CONVERT.
+             DISPLAY 'IAS220_CSUCURS *  ..' IAS220-CSUCURS CONVERT.
+             DISPLAY 'IAS220_CSUCCAB *  ..' IAS220-CSUCCAB CONVERT.
+             DISPLAY 'IAS220_CDELEGA *  ..' IAS220-CDELEGA CONVERT.
+      *      DISPLAY 'IAS220_CDELEGAC   ..' IAS220-CDELEGAC CONVERT.
+             DISPLAY 'IAS220_LASIENTO*  ..' IAS220-LASIENTO.
+             DISPLAY 'IAS220_DFECAPU *  ..' IAS220-DFECAPU.
+             DISPLAY 'IAS220_FASIDEF *  ..' IAS220-DFECAPU.
+             DISPLAY 'IAS220_LTIPOAS *  ..' IAS220-LTIPOAS.
+             DISPLAY 'IAS220_CCLAASI *  ..' IAS220-CCLAASI.
+             DISPLAY 'IAS220_CASIORI *  ..' IAS220-CASIORI.
+             DISPLAY 'IAS220_CASIREN *  ..' IAS220-CASIREN CONVERT.
+             DISPLAY 'IAS220_CAPUORI *  ..' IAS220-CAPUORI CONVERT.
+             DISPLAY 'IAS220_CAPUREN *  ..' IAS220-CAPUREN CONVERT.
+             DISPLAY 'IAS220_CCUENTA *  ..' IAS220-CCUENTA.
+             DISPLAY 'IAS220_CCONTRA *  ..' IAS220-CCONTRA.
+             DISPLAY 'IAS220_CCONAGR *  ..' IAS220-CCONAGR.
+             DISPLAY 'IAS220_CCONCEP *  ..' IAS220-CCONCEP.
+             DISPLAY 'IAS220_LCLAINF *  ..' IAS220-LCLAINF.
+             DISPLAY 'IAS220_NDEBE   *  ..' IAS220-NDEBE CONVERT.
+             DISPLAY 'IAS220_NHABER  *  ..' IAS220-NHABER CONVERT.
+             DISPLAY 'IAS220_NDEBELOC  *..' IAS220-NDEBELOC CONVERT.
+             DISPLAY 'IAS220_NHABERLOC *..' IAS220-NHABERLOC CONVERT.
+             DISPLAY 'IAS220_NDEBECTE  *..' IAS220-NDEBECTE CONVERT.
+             DISPLAY 'IAS220_NHABERCTE *..' IAS220-NHABERCTE CONVERT.
+             DISPLAY 'IAS220_CPRODU     ..' IAS220-CPRODU CONVERT.
+             DISPLAY 'IAS220_CCOLABO ***..' IAS220-CCOLABO.
+             DISPLAY 'IAS220_XCLAGEN  * ..' IAS220-DFECAPU.
+             DISPLAY 'IAS220_FCREA    * ..  FECHA-DE-HOY'.
+             DISPLAY 'IAS220_FMODI    * ..' IAS220-DFECAPU.
+
+      *----------------------------------------------------------------*
+       TERMINAR.
+      *--------*
+            EXEC SQL
+                 COMMIT
+            END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       LEO-PARAMETROS. 
+      *--------------*
+                 MOVE 0 TO RESULTADO.  
+            EXEC SQL
+                SELECT 
+                     TO_NUMBER(PARA1), 
+                     TO_NUMBER(PARA2), 
+                     CLAVE
+                INTO 
+                    :TCOD-CIA,
+                    :EJERCICIO,
+                    :CLAVE
+                FROM   A2990050
+                WHERE  
+                       NOMBRPT  = 'AB502001.pco'      AND
+                       CLAVE    = ( SELECT MIN(CLAVE) FROM A2990050 
+                                    WHERE  NOMBRPT = 'AB502001.pco' 
+                                    AND    MCALIS  = 'S')
+            END-EXEC. 
+
+
+      *
+      *----------------------------------------------------------------*
+        VALIDA-CIA. 
+      *--------------*
+			 MOVE 0 TO RESULTADO.  
+
+		EXEC SQL
+          select 'LIBERTADOR'
+                 INTO
+          :WS-CIA
+          FROM A1000900 WHERE COD_CIA = :TCOD-CIA
+            and 
+			razsoc_cia like '%INVESTIGACIONES%' 
+		END-EXEC. 
+      *
+      *----------------------------------------------------------------*
+        LEO-A5021700. 
+      *--------------*
+			 MOVE 0 TO RESULTADO.  
+		EXEC SQL
+			SELECT 
+			   'DEBE CORRER PROGRAMA AR502175-COMISIONES'
+			INTO 
+				:OBSERVACION
+			FROM   A5021700
+			WHERE  
+				   COD_CIA  = :TCOD-CIA
+				   AND  NVL(MCA_AR502175,'N') = 'N'
+				   AND nvl(:WS-CIA,'X') <> 'LIBERTADOR'
+		END-EXEC. 
+      *
+      *----------------------------------------------------------------*
+         LEO-A5021700a. 
+      *--------------*
+			 MOVE 0 TO RESULTADO.  
+		EXEC SQL
+			SELECT 
+			   'DEBE CORRER PROGRAMA AR502176-COMISIONES'
+                INTO 
+                    :OBSERVACION
+                FROM   A5021700
+                WHERE  
+                       COD_CIA  = :TCOD-CIA
+					   AND  NVL(MCA_AR502176,'N') = 'N'
+				       AND nvl(:WS-CIA,'X') <>  'LIBERTADOR'
+        END-EXEC. 
+      *
+      *----------------------------------------------------------------*
+         LEO-A5021700b. 
+      *--------------*
+			 MOVE 0 TO RESULTADO.  
+		EXEC SQL
+			SELECT 
+			   'DEBE CORRER PROGRAMA AR502177'
+                INTO 
+                    :OBSERVACION
+                FROM   A5021700
+                WHERE  
+                       COD_CIA  = :TCOD-CIA
+					   AND  NVL(MCA_AR502177,'N') = 'N'
+              and :TCOD-CIA   <= 9
+        END-EXEC. 
+      *
+
+      *----------------------------------------------------------------*
+      *                              AND    MCALIS  = 'S')
+       ACT-PARAMETROS. 
+      *--------------*
+                 EXEC SQL
+          BEGIN
+          UPDATE A2990050
+          SET MCALIS = DECODE(:OBSERVACION,'','N','E')    
+                              ,OBSERVACION = :OBSERVACION
+                 WHERE  CLAVE       = :CLAVE
+                 AND    NOMBRPT     = 'AB502001.pco'
+          ;
+          END;
+                 END-EXEC.
+      *
+      *----------------------------------------------------------------*
+       VE-DIFERENCIA.
+      *-------------*
+           EXEC SQL
+            BEGIN
+            UPDATE IASFIC_tes A    SET A.IAS220_NDEBECTE =
+      ( SELECT A.IAS220_NDEBECTE - (SUM(NVL(IAS220_NDEBECTE,0))    - 
+                                    SUM(NVL(IAS220_NHABERCTE,0)))
+            FROM IASFIC_tes                                             )
+            WHERE  A.ROWID = ( SELECT MIN(ROWID) 
+                               FROM IASFIC_tes
+                               WHERE IAS220_CEMPRES  = :TCOD-CIA
+                               AND   IAS220_CCLAASI  = 'TES'
+                               AND   IAS220_NDEBECTE = (
+                                       SELECT MAX(IAS220_NDEBECTE) 
+                                       FROM IASFIC_tes
+                                       WHERE IAS220_CEMPRES = :TCOD-CIA
+                                       AND   IAS220_CCLAASI = 'TES'))
+            ;
+            END;
+           END-EXEC.
